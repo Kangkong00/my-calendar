@@ -80,7 +80,7 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;position:relative}
 .hl.six{border-top-color:var(--line)}
 .hlab{position:absolute;left:0;width:30px;text-align:right;font-size:9.5px;color:#6E5A47;transform:translateY(-6px);pointer-events:none}
 .hlab.six{font-size:11px;font-weight:700;color:var(--goldM)}
-.blk{position:absolute;border:none;text-align:left;overflow:hidden;border-radius:5px;padding:2px 3px;font-size:10px;font-weight:700;line-height:1.15;word-break:keep-all;box-shadow:0 2px 6px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.22)}
+.blk{position:absolute;border:none;text-align:left;overflow:hidden;border-radius:5px;padding:2px 3px;font-size:10px;font-weight:700;line-height:1.15;word-break:keep-all;overflow-wrap:anywhere;box-shadow:0 2px 6px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.22)}
 .nowline{position:absolute;height:1.5px;background:linear-gradient(90deg,#E3C48E,rgba(227,196,142,.15));pointer-events:none;box-shadow:0 0 6px rgba(227,196,142,.6)}
 
 /* nav */
@@ -540,7 +540,7 @@ function drawWeek(dir) {
     const c0 = Math.max(0, Math.round((sod(x.s) - a) / 864e5)), c1 = Math.min(6, Math.round((sod(new Date(x.e.getTime() - 1)) - a) / 864e5));
     let L = 0; while (lanes[L] && lanes[L].slice(c0, c1 + 1).some(Boolean)) L++;
     if (L > 2) return; lanes[L] = lanes[L] || []; for (let i = c0; i <= c1; i++) lanes[L][i] = 1;
-    adHtml += '<button class="bar" data-ev="' + esc(x.calId + '|' + x.id + '|' + x.start) + '" style="pointer-events:auto;border:none;top:' + (L * 19) + 'px;left:calc(' + (c0 / 7 * 100) + '% + 1px);width:calc(' + ((c1 - c0 + 1) / 7 * 100) + '% - 2px);background:' + x.color + ';color:' + fg(x.color) + '">' + esc(tagless(x.title)) + '</button>';
+    adHtml += '<button class="bar" data-ev="' + esc(x.calId + '|' + x.id + '|' + x.start) + '" style="pointer-events:auto;border:none;top:' + (L * 19) + 'px;left:calc(' + (c0 / 7 * 100) + '% + 1px);width:calc(' + ((c1 - c0 + 1) / 7 * 100) + '% - 2px);background:' + x.color + ';color:' + fg(x.color) + '">' + esc(x.title) + '</button>';
   });
   const adH = lanes.length * 19;
   main.innerHTML = head + (adH ? '<div class="wkallday" style="height:' + adH + 'px">' + adHtml + '</div>' : '') + '<div class="wkgrid ' + (dir ? 'anim-' + dir : '') + '" id="wkgrid"></div>';
@@ -552,7 +552,7 @@ function drawWeek(dir) {
     const d = addD(a, i); let blocks = '';
     layoutDay(clipDay(list, d)).forEach(it => {
       const top = 4 + it.a / 60 * PX, ht = Math.max((it.b - it.a) / 60 * PX - 1, 6), w = 100 / it.n;
-      blocks += '<button class="blk" data-ev="' + esc(it.x.calId + '|' + it.x.id + '|' + it.x.start) + '" style="top:' + top + 'px;height:' + ht + 'px;left:calc(' + (it.col * w) + '% + 1px);width:calc(' + w + '% - 2px);background:linear-gradient(180deg,' + it.x.color + ',' + it.x.color + 'D9);color:' + fg(it.x.color) + '">' + (ht >= 16 ? esc(tagless(it.x.title)) : '') + '</button>';
+      blocks += '<button class="blk" data-ev="' + esc(it.x.calId + '|' + it.x.id + '|' + it.x.start) + '" style="top:' + top + 'px;height:' + ht + 'px;left:calc(' + (it.col * w) + '% + 1px);width:calc(' + w + '% - 2px);background:linear-gradient(180deg,' + it.x.color + ',' + it.x.color + 'D9);color:' + fg(it.x.color) + (ht < 16 ? ';font-size:' + Math.max(8, Math.min(10, ht - 2)) + 'px;line-height:' + Math.max(7, ht - 1) + 'px;padding:0 2px;white-space:nowrap' : '') + (it.n > 1 && ht >= 16 ? ';font-size:9px;padding:2px 2px' : '') + '">' + (ht >= 16 ? esc(it.x.title).replace(/^(\[[^\]]+\])\s*/, '$1<br>') : esc(it.x.title)) + '</button>';
     });
     cols += '<div class="wkcol' + (same(d, today) ? ' today' : '') + '" data-slot="' + ymd(d) + '">' + blocks + '</div>';
   }
