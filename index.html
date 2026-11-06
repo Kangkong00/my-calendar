@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" type="image/png" href="icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@700;800&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700;800&family=Nanum+Pen+Script&family=Noto+Sans+KR:wght@400;500;700&display=swap">
 <style>
 :root{
   --bg:#070504; --ink:#EFE3CF; --mut:#A89275; --dim:#7F6B55; --line:#3A2A1E; --line2:#241911; --line3:#1E150F;
@@ -284,6 +284,25 @@ input[type=date].inp{color-scheme:dark;min-width:0}
 @keyframes docUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
 @keyframes docDown{from{transform:translateY(0)}to{transform:translateY(105%)}}
 @media (prefers-reduced-motion: reduce){.pg,.pgin-back,.pgin-up{animation:none!important}}
+
+/* 아날로그 메모장 */
+.npaper{position:relative;flex:1;min-height:58vh;display:flex;flex-direction:column;border-radius:6px 14px 14px 6px;padding:16px 16px 10px 14px;
+  background:radial-gradient(120% 80% at 30% 0%,rgba(255,236,200,.06),transparent 60%),radial-gradient(rgba(255,235,210,.035) 1px,transparent 1.3px) 0 0/5px 5px,linear-gradient(180deg,#1E160F,#150F0A);
+  border:1px solid #3A2A1E;box-shadow:inset 0 0 40px rgba(0,0,0,.55),inset 3px 0 0 rgba(0,0,0,.35),0 10px 26px rgba(0,0,0,.55)}
+.npaper::before{content:'';position:absolute;top:0;bottom:0;left:40px;width:1px;background:rgba(232,149,122,.30)}
+.npaper::after{content:'';position:absolute;top:10px;bottom:10px;left:8px;width:12px;background:radial-gradient(circle at 6px 6px,#070504 3.5px,rgba(201,164,106,.25) 4px,transparent 4.5px) 0 0/12px 34px;opacity:.9}
+.nhead{display:flex;align-items:center;gap:10px;padding-left:36px;margin-bottom:6px}
+.nstamp{font-family:'Nanum Myeongjo',serif;font-weight:700;font-size:12px;letter-spacing:2px;color:#C9A46A;border:1px solid rgba(201,164,106,.45);padding:3px 8px;border-radius:3px;transform:rotate(-1.5deg)}
+.nline{flex:1;height:1px;background:linear-gradient(90deg,rgba(201,164,106,.45),transparent)}
+.ntitle{border:none;background:transparent;color:#F1E4CC;outline:none;padding:4px 0 6px 36px;width:100%;border-bottom:1px solid rgba(201,164,106,.25)}
+.nmemo{flex:1;min-height:40vh;width:100%;resize:none;border:none;outline:none;color:#E9DCC4;padding:0 6px 0 36px;margin-top:6px;
+  background-image:linear-gradient(to bottom,transparent calc(100% - 1px),rgba(201,164,106,.16) calc(100% - 1px));background-attachment:local;background-color:transparent}
+.nmemo::placeholder{color:#6E5A47}
+.ntools{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.nchip{min-height:34px;padding:0 10px;border-radius:17px;border:1px solid #4A3626;background:transparent;color:#D9C7A8;font-size:13px;display:inline-flex;align-items:center;gap:2px}
+.nchip.on{border-color:#C9A46A;color:#140D09;background:var(--gold)}
+.nchip small{font-size:11px}
+.tmemo{font-size:15px;color:#BFA987;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2}
 </style>
 </head>
 <body>
@@ -309,7 +328,7 @@ input[type=date].inp{color-scheme:dark;min-width:0}
 </div>
 <script>
 'use strict';
-const APP_V = '3.6';
+const APP_V = '3.7';
 /* ========== 기본 도구 ========== */
 const $ = s => document.querySelector(s);
 const pad = n => String(n).padStart(2, '0');
@@ -880,8 +899,8 @@ function drawTasks() {
   const doneOld = mine.filter(x => x.done && x.due !== today);
   const tot = tdy.length, dn = tdy.filter(x => x.done).length, pct = tot ? Math.round(dn / tot * 100) : 0;
   const dl = s => { const d = pymd(s); return koD(d); };
-  const row = (x, kind) => { const lt = !x.done && x.due && x.due < today; const meta = [lt ? dl(x.due) + ' 까지였음' : '', kind === 'up' ? dl(x.due) : '', subs(x.id) ? '하위 ' + subs(x.id) + '개' : '', x.notes ? '메모 있음' : ''].filter(Boolean).join(' · ');
-    return '<div class="trow' + (x.done ? ' done' : '') + (lt ? ' late' : '') + '" data-tid="' + esc(x.id) + '"><i class="shine"></i>' + ckHTML(x.title + ' 완료', 'data-tk="' + esc(x.id) + '"' + (x.done ? ' checked' : '')) + '<div class="tmain"><span class="ttl">' + esc(x.title) + '<i class="strike"></i></span>' + (meta ? '<span class="tmeta">' + esc(meta) + '</span>' : '') + '</div>' + (lt ? '<button class="tside" data-tt="' + esc(x.id) + '">오늘로</button>' : '') + '</div>'; };
+  const row = (x, kind) => { const lt = !x.done && x.due && x.due < today; const meta = [lt ? dl(x.due) + ' 까지였음' : '', kind === 'up' ? dl(x.due) : '', subs(x.id) ? '하위 ' + subs(x.id) + '개' : ''].filter(Boolean).join(' · '); const memo = (x.notes || '').split('\n').find(l => l.trim()) || '';
+    return '<div class="trow' + (x.done ? ' done' : '') + (lt ? ' late' : '') + '" data-tid="' + esc(x.id) + '"><i class="shine"></i>' + ckHTML(x.title + ' 완료', 'data-tk="' + esc(x.id) + '"' + (x.done ? ' checked' : '')) + '<div class="tmain"><span class="ttl">' + esc(x.title) + '<i class="strike"></i></span>' + (meta ? '<span class="tmeta">' + esc(meta) + '</span>' : '') + (memo ? '<span class="tmemo" style="font-family:' + NFONT[S.noteFont || 'pen'] + '">' + esc(memo) + '</span>' : '') + '</div>' + (lt ? '<button class="tside" data-tt="' + esc(x.id) + '">오늘로</button>' : '') + '</div>'; };
   const grp = (title, cls, items, kind, extra) => '<div class="tgroup"><div class="tgh"><h3 class="serif ' + cls + '">' + title + '<small>' + items.length + '개</small></h3>' + (extra || '') + '</div><div class="tlist">' + (items.length ? items.map(x => row(x, kind)).join('') : '<div class="note" style="padding:14px;text-align:center">비어 있어요</div>') + '</div></div>';
   const W = [['today', '오늘'], ['tomorrow', '내일'], ['nextmon', '다음 주 월'], ['none', '날짜 없음']];
   let h = '<div class="scroller" id="tscroll"><div class="prog"><div class="t"><span>오늘 ' + dn + ' / ' + tot + ' 완료</span><span>' + pct + '%</span></div><div class="b"><i style="width:' + pct + '%"></i></div></div>'
@@ -896,22 +915,35 @@ function drawTasks() {
   if (foc) { const d = $('#tDraft'); d.focus({ preventScroll: true }); try { d.setSelectionRange(cp, cp); } catch (e) {} }
 }
 const TAPI = 'https://tasks.googleapis.com/tasks/v1';
+const NFONT = { pen: "'Nanum Pen Script', cursive", serif: "'Nanum Myeongjo', serif", sans: "'Noto Sans KR', sans-serif" };
+const NSCALE = { pen: 1.25, serif: 1, sans: 1 };
 function openTask(x) {
   const today = sod(new Date());
   const f = { title: x.title, due: x.due || '', notes: x.notes || '', armed: false };
+  if (!S.noteSize) S.noteSize = 16; if (!S.noteFont) S.noteFont = 'pen';
   const Q = [['오늘', ymd(today)], ['내일', ymd(addD(today, 1))], ['다음 주 월', ymd(addD(today, ((8 - today.getDay()) % 7) || 7))], ['날짜 없음', '']];
+  const fs = () => Math.round(S.noteSize * NSCALE[S.noteFont]), lh = () => Math.round(fs() * 1.7);
+  const paperStyle = () => 'font-family:' + NFONT[S.noteFont] + ';font-size:' + fs() + 'px;line-height:' + lh() + 'px;background-size:100% ' + lh() + 'px;';
+  const stamp = f.due ? koD(pymd(f.due)) : '날짜 없음';
   let sh;
-  const body = () => '<label style="display:flex;flex-direction:column;gap:4px"><span class="lab">할 일</span><input class="title-inp" id="kTitle" value="' + esc(f.title) + '" autocomplete="off"></label>'
-    + sec('날짜', '<div class="row">' + Q.map(q => '<button class="pillb' + (f.due === q[1] ? ' on' : '') + '" data-a="kq" data-v="' + q[1] + '">' + q[0] + '</button>').join('') + '</div><input type="date" class="inp" id="kDue" value="' + f.due + '"><p class="note">할 일은 날짜만 저장됩니다.</p>')
-    + sec('메모', '<textarea class="inp" id="kNotes" placeholder="메모 추가">' + esc(f.notes) + '</textarea>')
-    + '<div class="row" style="gap:8px;margin-top:4px"><button class="obtn" data-a="kdel" style="flex:1;height:48px">' + (f.armed ? '한 번 더 누르면 삭제' : '삭제') + '</button><button class="gbtn" data-a="ksave" style="flex:2;height:48px">저장</button></div>';
-  const redraw = () => { const b = sh.querySelector('.sbody'), y = b.scrollTop; b.innerHTML = body(); b.scrollTop = y; };
+  const tools = () => '<div class="ntools"><div class="row" style="gap:4px">' + [['pen', '손글씨'], ['serif', '명조'], ['sans', '고딕']].map(z => '<button class="nchip' + (S.noteFont === z[0] ? ' on' : '') + '" data-a="nf" data-v="' + z[0] + '" style="font-family:' + NFONT[z[0]] + (z[0] === 'pen' ? ';font-size:17px' : '') + '">' + z[1] + '</button>').join('') + '</div><div class="row" style="gap:4px"><button class="nchip" data-a="fsz" data-v="-1" aria-label="글자 작게">가<small>−</small></button><button class="nchip" data-a="fsz" data-v="1" aria-label="글자 크게" style="font-size:17px">가<small>+</small></button></div></div>';
+  const body = () => '<div class="npaper">'
+    + '<div class="nhead"><span class="nstamp">' + esc(f.due ? koD(pymd(f.due)) : '날짜 없음') + '</span><span class="nline"></span></div>'
+    + '<input class="ntitle" id="kTitle" value="' + esc(f.title) + '" autocomplete="off" aria-label="할 일" style="font-family:' + NFONT[S.noteFont] + ';font-size:' + Math.round(fs() * 1.35) + 'px">'
+    + '<div class="row" style="gap:6px;padding:0 0 8px 36px">' + Q.map(q => '<button class="nchip' + (f.due === q[1] ? ' on' : '') + '" data-a="kq" data-v="' + q[1] + '">' + q[0] + '</button>').join('') + '<label class="nchip" style="position:relative;overflow:hidden">날짜…<input type="date" id="kDue" value="' + f.due + '" style="position:absolute;inset:0;opacity:0"></label></div>'
+    + '<textarea class="nmemo" id="kNotes" placeholder="여기에 메모를 끄적여 보세요…" style="' + paperStyle() + '">' + esc(f.notes) + '</textarea>'
+    + '</div>' + tools()
+    + '<div class="row" style="gap:8px"><button class="obtn" data-a="kdel" style="flex:1;height:46px' + (f.armed ? ';border-color:#E8957A;color:#E8957A' : '') + '">' + (f.armed ? '한 번 더 누르면 삭제' : '삭제') + '</button><button class="gbtn" data-a="ksave" style="flex:2;height:46px">저장</button></div>';
+  const redraw = () => { const b = sh.querySelector('.sbody'), ta = sh.querySelector('#kNotes'), ty = ta ? ta.scrollTop : 0; b.innerHTML = body(); const t2 = sh.querySelector('#kNotes'); if (t2) t2.scrollTop = ty; };
+  const restyle = () => { const ta = sh.querySelector('#kNotes'), ti = sh.querySelector('#kTitle'); if (ta) ta.setAttribute('style', paperStyle()); if (ti) { ti.style.fontFamily = NFONT[S.noteFont]; ti.style.fontSize = Math.round(fs() * 1.35) + 'px'; } sh.querySelectorAll('[data-a=nf]').forEach(b => b.classList.toggle('on', b.dataset.v === S.noteFont)); };
   const url = TAPI + '/lists/' + encodeURIComponent(x.listId) + '/tasks/' + encodeURIComponent(x.id);
-  sh = openSheet('<div class="shead"><button class="tbtn" data-a="cancel">취소</button><h2 class="serif goldtext" style="font-size:20px">할 일 수정</h2><span style="width:52px"></span></div><div class="sbody">' + body() + '</div>', async (a, t) => {
+  sh = openSheet('<div class="shead"><button class="tbtn" data-a="cancel">취소</button><h2 class="serif goldtext" style="font-size:19px">할 일 · 메모</h2><span style="width:52px"></span></div><div class="sbody" style="gap:12px">' + body() + '</div>', async (a, t) => {
     if (a === 'cancel') { closeSheet(); return; }
     if (a === 'kq') { f.due = t.dataset.v; redraw(); return; }
+    if (a === 'nf') { S.noteFont = t.dataset.v; save(); restyle(); return; }
+    if (a === 'fsz') { S.noteSize = Math.max(12, Math.min(26, S.noteSize + Number(t.dataset.v) * 2)); save(); restyle(); return; }
     if (a === 'kdel') {
-      if (!f.armed) { f.armed = true; redraw(); const d = sh.querySelector('[data-a=kdel]'); d.style.borderColor = '#E8957A'; d.style.color = '#E8957A'; return; }
+      if (!f.armed) { f.armed = true; redraw(); return; }
       t.disabled = true;
       try { await batch([{ method: 'delete', url }]); T.tasks = T.tasks.filter(y => y.id !== x.id && y.parent !== x.id); saveTasks(); toast('삭제했습니다'); closeSheet(); drawTasks(); } catch (err) { toast('삭제 실패: ' + err.message); t.disabled = false; }
       return;
@@ -919,10 +951,10 @@ function openTask(x) {
     if (a === 'ksave') {
       const title = (f.title || '').trim(); if (!title) { toast('내용을 입력해 주세요'); return; }
       t.disabled = true; t.textContent = '저장 중';
-      try { await batch([{ method: 'patch', url, body: { title, notes: f.notes, due: f.due ? f.due + 'T00:00:00.000Z' : null } }]); Object.assign(x, { title, notes: f.notes, due: f.due }); saveTasks(); toast('수정했습니다'); closeSheet(); drawTasks(); }
-      catch (err) { toast('수정 실패: ' + err.message); t.disabled = false; t.textContent = '저장'; }
+      try { await batch([{ method: 'patch', url, body: { title, notes: f.notes, due: f.due ? f.due + 'T00:00:00.000Z' : null } }]); Object.assign(x, { title, notes: f.notes, due: f.due }); saveTasks(); toast('저장했습니다'); closeSheet(); drawTasks(); }
+      catch (err) { toast('저장 실패: ' + err.message); t.disabled = false; t.textContent = '저장'; }
     }
-  }, { keep: true, onInput: e => { if (e.target.id === 'kTitle') f.title = e.target.value; if (e.target.id === 'kNotes') f.notes = e.target.value; }, onChange: e => { if (e.target.id === 'kDue') { f.due = e.target.value; redraw(); } } });
+  }, { keep: true, height: '94%', onInput: e => { if (e.target.id === 'kTitle') f.title = e.target.value; if (e.target.id === 'kNotes') f.notes = e.target.value; }, onChange: e => { if (e.target.id === 'kDue') { f.due = e.target.value; redraw(); } } });
 }
 const nextDue = w => { const t = sod(new Date()); if (w === 'today') return ymd(t); if (w === 'tomorrow') return ymd(addD(t, 1)); if (w === 'nextmon') return ymd(addD(t, ((8 - t.getDay()) % 7) || 7)); return ''; };
 async function taskToggle(id, el) {
