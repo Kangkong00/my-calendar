@@ -24,6 +24,10 @@
   --sat-top:env(safe-area-inset-top,0px); --sat-bot:env(safe-area-inset-bottom,0px);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+button,label,a,.pillb,.mday,.blk,.tb{touch-action:manipulation;-webkit-user-select:none;user-select:none}
+select{font-size:16px!important}
+.scrollx{overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+.sbody{overscroll-behavior:contain}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',system-ui,sans-serif;overscroll-behavior:none}
 button,input,select,textarea{font-family:inherit;color:inherit}
 button{cursor:pointer}
@@ -305,7 +309,7 @@ input[type=date].inp{color-scheme:dark;min-width:0}
 </div>
 <script>
 'use strict';
-const APP_V = '3.4';
+const APP_V = '3.5';
 /* ========== 기본 도구 ========== */
 const $ = s => document.querySelector(s);
 const pad = n => String(n).padStart(2, '0');
@@ -410,10 +414,13 @@ async function api(action, params = {}, post = false) {
   busy++; syncDot();
   try {
     if (demo()) { await new Promise(r => setTimeout(r, 150)); const r = Demo[action](JSON.parse(JSON.stringify(params))); if (!r.ok) throw new Error(r.error); return JSON.parse(JSON.stringify(r)); }
-    let res;
-    if (post) res = await fetch(S.url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(Object.assign({ action, key: S.key }, params)) });
-    else res = await fetch(S.url + (S.url.includes('?') ? '&' : '?') + new URLSearchParams(Object.assign({ action, key: S.key }, params)).toString());
-    const j = await res.json();
+    let res; const ac = new AbortController(), to = setTimeout(() => ac.abort(), 30000);
+    try {
+      if (post) res = await fetch(S.url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(Object.assign({ action, key: S.key }, params)), signal: ac.signal });
+      else res = await fetch(S.url + (S.url.includes('?') ? '&' : '?') + new URLSearchParams(Object.assign({ action, key: S.key }, params)).toString(), { signal: ac.signal });
+    } catch (e) { throw new Error(e.name === 'AbortError' ? '서버 응답이 너무 늦어요. 잠시 뒤 다시 해 주세요' : '인터넷 연결을 확인해 주세요'); }
+    finally { clearTimeout(to); }
+    let j; try { j = await res.json(); } catch (e) { throw new Error('서버 응답을 읽지 못했어요 (' + res.status + ')'); }
     if (!j.ok) throw new Error(j.error || '오류');
     return j;
   } finally { busy--; syncDot(); }
@@ -596,7 +603,7 @@ function openSheet(html, onClick, opts = {}) {
   sh.innerHTML = '<span class="grab"></span>' + html;
   document.body.append(dim, sh);
   sheetStack.push({ dim, sh });
-  dim.addEventListener('click', () => closeSheet());
+  dim.addEventListener('click', () => { if (opts.keep) { sh.animate([{ transform: 'translateY(0)' }, { transform: 'translateY(8px)' }, { transform: 'translateY(0)' }], { duration: 220 }); return; } closeSheet(); });
   sh.addEventListener('click', e => { const t = e.target.closest('[data-a]'); if (t && onClick) onClick(t.dataset.a, t, e); });
   if (opts.onInput) sh.addEventListener('input', opts.onInput);
   if (opts.onChange) sh.addEventListener('change', opts.onChange);
@@ -698,6 +705,8 @@ function openCreate(pre = {}) {
   const SW = [['황동', '#8E6B3A'], ['코냑', '#6B3F22'], ['버건디', '#7A2E2E'], ['포레스트', '#2F4A3A'], ['네이비', '#2E3A5C'], ['샴페인', '#D9BC86'], ['차콜', '#3A3A3A'], ['플럼', '#5A3550'], ['토마토', '#D50000'], ['귤', '#F4511E'], ['바나나', '#F6BF26'], ['바질', '#0B8043'], ['세이지', '#33B679'], ['공작', '#039BE5'], ['블루베리', '#3F51B5'], ['포도', '#8E24AA']];
   let sh;
   const durTxt = () => { const x = DU.find(y => y[0] === f.dur); return x ? x[1] : (Math.floor(f.dur / 60) ? Math.floor(f.dur / 60) + '시간 ' : '') + (f.dur % 60 ? f.dur % 60 + '분' : ''); };
+  const durLabel = () => durTxt() + (f.st + f.dur >= 1440 ? ' · 다음 날' : '');
+  const endSlots = () => { let s = ''; const a = Math.floor(f.st / 30) * 30 + 30; for (let m = a; m <= f.st + 720; m += 30) s += '<button class="pillb' + (f.st + f.dur === m ? ' on' : '') + '" data-a="eslot" data-m="' + m + '">' + ko(m) + (m >= 1440 ? ' (다음 날)' : '') + '</button>'; return s; };
   const slots = () => { let s = ''; for (let m = 0; m < 1440; m += 30) s += '<button class="pillb' + (Math.floor(f.st / 30) * 30 === m ? ' on' : '') + '" data-a="slot" data-m="' + m + '">' + ko(m) + '</button>'; return s; };
   const body = () => '<label style="display:flex;flex-direction:column;gap:4px"><span class="lab">제목</span><input class="title-inp" id="fTitle" placeholder="일정 제목" value="' + esc(f.title) + '" autocomplete="off"></label>'
     + '<div style="display:flex;flex-direction:column;gap:8px"><span class="lab">캘린더 · 색은 구글 캘린더 색 그대로</span><div class="row">' + st.cals.filter(c => c.owned && !isHol(c.id)).map(c => '<button class="pillb' + (f.cal === c.id ? ' on' : '') + '" data-a="cal" data-id="' + esc(c.id) + '">' + esc(c.name) + '</button>').join('') + '<button class="pillb dash" data-a="newcat">+ 새 카테고리</button></div>'
@@ -705,10 +714,10 @@ function openCreate(pre = {}) {
     + '<div class="box"><div class="boxrow" style="justify-content:space-between">종일<button class="switch' + (f.allDay ? ' on' : '') + '" role="switch" aria-checked="' + f.allDay + '" aria-label="종일" data-a="allday"><i></i></button></div>'
     + '<div class="boxrow"><span class="lab" style="width:30px">' + (f.allDay ? '시작' : '날짜') + '</span><input type="date" class="inp" id="fDate" value="' + f.date + '" style="flex:1;height:40px;border:none;background:transparent;padding:0"></div>'
     + (f.allDay ? '<div class="boxrow"><span class="lab" style="width:30px">종료</span><input type="date" class="inp" id="fEnd" value="' + f.endDate + '" style="flex:1;height:40px;border:none;background:transparent;padding:0"></div>'
-      : '<div class="boxrow"><span class="lab" style="width:30px">시작</span><span style="flex:1"></span><button class="timebtn' + (f.open === 's' ? ' on' : '') + '" data-a="openS">' + ko(f.st) + '</button></div>'
+      : '<div class="boxrow"><span class="lab" style="width:30px">시작</span><span style="flex:1"></span><button class="timebtn' + (f.open === 's' ? ' on' : '') + '" data-a="openS" id="tS">' + ko(f.st) + '</button></div>'
       + (f.open === 's' ? '<div class="picker"><div class="scrollx" id="slotRow" style="padding:0 14px">' + slots() + '</div><div class="fine"><button data-a="fine" data-v="-10">− 10분</button><button data-a="fine" data-v="-5">− 5분</button><span style="width:1px;height:22px;background:var(--line)"></span><button data-a="fine" data-v="5">+ 5분</button><button data-a="fine" data-v="10">+ 10분</button></div></div>' : '')
-      + '<div class="boxrow"><span class="lab" style="width:30px">종료</span><span class="lab" style="flex:1">' + durTxt() + (f.st + f.dur >= 1440 ? ' · 다음 날' : '') + '</span><button class="timebtn' + (f.open === 'e' ? ' on' : '') + '" data-a="openE">' + ko(f.st + f.dur) + '</button></div>'
-      + (f.open === 'e' ? '<div class="picker" style="border-bottom:none"><div class="scrollx" style="padding:0 14px">' + DU.map(x => '<button class="pillb' + (f.dur === x[0] ? ' on' : '') + '" data-a="dur" data-v="' + x[0] + '">' + x[1] + '</button>').join('') + '</div><div class="fine"><button data-a="dfine" data-v="-10">− 10분</button><button data-a="dfine" data-v="-5">− 5분</button><span style="width:1px;height:22px;background:var(--line)"></span><button data-a="dfine" data-v="5">+ 5분</button><button data-a="dfine" data-v="10">+ 10분</button></div></div>' : '')) + '</div>'
+      + '<div class="boxrow"><span class="lab" style="width:30px">종료</span><span class="lab" style="flex:1" id="tD">' + durLabel() + '</span><button class="timebtn' + (f.open === 'e' ? ' on' : '') + '" data-a="openE" id="tE">' + ko(f.st + f.dur) + '</button></div>'
+      + (f.open === 'e' ? '<div class="picker" style="border-bottom:none"><span class="lab" style="padding:0 14px">끝나는 시각</span><div class="scrollx" id="endRow" style="padding:0 14px">' + endSlots() + '</div><span class="lab" style="padding:0 14px">또는 걸리는 시간</span><div class="scrollx" id="durRow" style="padding:0 14px">' + DU.map(x => '<button class="pillb' + (f.dur === x[0] ? ' on' : '') + '" data-a="dur" data-v="' + x[0] + '">' + x[1] + '</button>').join('') + '</div><div class="fine"><button data-a="dfine" data-v="-10">− 10분</button><button data-a="dfine" data-v="-5">− 5분</button><span style="width:1px;height:22px;background:var(--line)"></span><button data-a="dfine" data-v="5">+ 5분</button><button data-a="dfine" data-v="10">+ 10분</button></div></div>' : '')) + '</div>'
     + (E ? (E.recurring ? '<p class="note">반복 일정 중 <b>이 날 것만</b> 바뀝니다.</p>' : '') : '<div style="display:flex;flex-direction:column;gap:8px"><span class="lab">반복</span><div class="row">' + RP.map(r => '<button class="pillb' + (f.rep === r[0] ? ' on' : '') + '" data-a="rep" data-v="' + r[0] + '">' + r[1] + '</button>').join('') + '</div>'
     + (f.rep === 'weekly' ? '<div class="wdays">' + WD.map((w, i) => '<button class="' + (f.days[i] ? 'on' : '') + '" data-a="wd" data-v="' + i + '">' + w + '</button>').join('') + '</div>' : '') + '</div>')
     + '<div style="display:flex;flex-direction:column;gap:8px"><span class="lab">' + (E && !f.alarmsTouched ? '알림 · 바꾸지 않으면 기존 알림 그대로' : '알림 · 평소엔 꺼짐') + '</span><div class="row">' + f.alarms.map(v => '<span class="alarmchip">' + AL.find(x => x[0] === v)[1] + '<button data-a="alrm" data-v="' + v + '" aria-label="알림 끄기">' + ICON.x + '</button></span>').join('') + '<button class="pillb dash" data-a="addal" style="min-height:40px">' + (f.adding ? '닫기' : '+ 알림 추가') + '</button></div>'
@@ -716,7 +725,16 @@ function openCreate(pre = {}) {
     + '<label style="display:flex;flex-direction:column;gap:6px"><span class="lab">장소</span><input class="inp" id="fLoc" placeholder="장소 추가" value="' + esc(f.loc) + '"></label>'
     + '<label style="display:flex;flex-direction:column;gap:6px"><span class="lab">메모</span><textarea class="inp" id="fMemo" placeholder="설명 추가">' + esc(f.memo) + '</textarea></label>'
     + '<p class="note">구글 캘린더 <b>' + esc((st.calMap[f.cal] || {}).name || '') + '</b>에 저장됩니다.</p>' + (E && E.recurring && f.cal !== E.calId ? '<p class="note" style="color:var(--sun)">반복 일정은 캘린더를 옮길 수 없어요.</p>' : '');
-  const redraw = () => { const b = sh.querySelector('.sbody'), y = b.scrollTop; b.innerHTML = body(); b.scrollTop = y; const r = sh.querySelector('#slotRow .on'); if (r) r.parentNode.scrollLeft = r.offsetLeft - 120; };
+  const keepX = () => { const o = {}; sh.querySelectorAll('.scrollx[id]').forEach(x => o[x.id] = x.scrollLeft); return o; };
+  const redraw = (center) => { const b = sh.querySelector('.sbody'), y = b.scrollTop, xs = keepX(); b.innerHTML = body(); b.scrollTop = y;
+    sh.querySelectorAll('.scrollx[id]').forEach(x => { if (center) { const on = x.querySelector('.on'); x.scrollLeft = on ? on.offsetLeft - x.clientWidth / 2 + on.offsetWidth / 2 : 0; } else if (xs[x.id] != null) x.scrollLeft = xs[x.id]; }); };
+  const updTime = () => {
+    const S1 = sh.querySelector('#tS'), E1 = sh.querySelector('#tE'), D1 = sh.querySelector('#tD');
+    if (S1) S1.textContent = ko(f.st); if (E1) E1.textContent = ko(f.st + f.dur); if (D1) D1.textContent = durLabel();
+    sh.querySelectorAll('[data-a=slot]').forEach(x => x.classList.toggle('on', Number(x.dataset.m) === Math.floor(f.st / 30) * 30));
+    sh.querySelectorAll('[data-a=eslot]').forEach(x => x.classList.toggle('on', Number(x.dataset.m) === f.st + f.dur));
+    sh.querySelectorAll('[data-a=dur]').forEach(x => x.classList.toggle('on', Number(x.dataset.v) === f.dur));
+  };
   sh = openSheet('<div class="shead"><button class="tbtn" data-a="cancel">취소</button><h2 class="serif goldtext" style="font-size:20px;letter-spacing:1px">' + (E ? '일정 수정' : '새 일정') + '</h2><button class="gbtn" data-a="save">저장</button></div><div class="sbody">' + body() + '</div>', async (a, t) => {
     const v = t.dataset.v;
     switch (a) {
@@ -731,12 +749,13 @@ function openCreate(pre = {}) {
         break;
       }
       case 'allday': f.allDay = !f.allDay; f.open = ''; break;
-      case 'openS': f.open = f.open === 's' ? '' : 's'; break;
-      case 'openE': f.open = f.open === 'e' ? '' : 'e'; break;
-      case 'slot': f.st = Number(t.dataset.m); break;
-      case 'fine': f.st = Math.max(0, Math.min(1435, f.st + Number(v))); break;
-      case 'dur': f.dur = Number(v); break;
-      case 'dfine': f.dur = Math.max(5, f.dur + Number(v)); break;
+      case 'openS': f.open = f.open === 's' ? '' : 's'; redraw(true); return;
+      case 'openE': f.open = f.open === 'e' ? '' : 'e'; redraw(true); return;
+      case 'slot': f.st = Number(t.dataset.m); updTime(); return;
+      case 'fine': f.st = Math.max(0, Math.min(1435, f.st + Number(v))); updTime(); return;
+      case 'eslot': f.dur = Math.max(5, Number(t.dataset.m) - f.st); updTime(); return;
+      case 'dur': f.dur = Number(v); updTime(); { const r = sh.querySelector('#endRow'), on = r && r.querySelector('.on'); if (on) r.scrollTo({ left: on.offsetLeft - r.clientWidth / 2 + on.offsetWidth / 2, behavior: 'smooth' }); } return;
+      case 'dfine': f.dur = Math.max(5, f.dur + Number(v)); updTime(); return;
       case 'rep': f.rep = v; break;
       case 'wd': f.days[v] = !f.days[v]; break;
       case 'addal': f.adding = !f.adding; break;
@@ -767,6 +786,7 @@ function openCreate(pre = {}) {
     }
     redraw();
   }, {
+    keep: true,
     onInput: e => { const id = e.target.id; if (id === 'fTitle') f.title = e.target.value; if (id === 'fLoc') f.loc = e.target.value; if (id === 'fMemo') f.memo = e.target.value; if (id === 'fNewName') f.newName = e.target.value; if (id === 'fNewColor') f.newColor = e.target.value; },
     onChange: e => { const id = e.target.id; if (id === 'fDate') { f.date = e.target.value; if (f.endDate < f.date) f.endDate = f.date; redraw(); } if (id === 'fEnd') f.endDate = e.target.value; if (id === 'fNewColor') redraw(); }
   });
@@ -823,7 +843,7 @@ async function openDuplicate(o) {
       return;
     }
     redraw();
-  }, { onChange: async e => { if (e.target.dataset.i != null) { f.off[e.target.dataset.i] = !e.target.checked; redraw(); } if (e.target.id === 'fSrc') { f.srcDate = e.target.value; await loadSrc(); redraw(); } } });
+  }, { keep: true, onChange: async e => { if (e.target.dataset.i != null) { f.off[e.target.dataset.i] = !e.target.checked; redraw(); } if (e.target.id === 'fSrc') { f.srcDate = e.target.value; await loadSrc(); redraw(); } } });
 }
 
 /* ========== 할 일 ========== */
@@ -865,8 +885,9 @@ function drawTasks() {
   h += '<button class="donetoggle" data-donetog aria-expanded="' + T.showDone + '"><span style="display:inline-flex;transition:transform .2s;transform:rotate(' + (T.showDone ? 90 : 0) + 'deg)">' + ICON.chev + '</span>완료됨 ' + doneOld.length + '개</button>';
   if (T.showDone) h += '<div class="tlist" style="opacity:.85">' + (doneOld.length ? doneOld.slice(0, 50).map(x => row(x, 'done')).join('') : '<div class="note" style="padding:14px">최근 30일 동안 완료한 일이 여기 보입니다</div>') + '</div>';
   h += '</div>';
-  const y = $('#tscroll') ? $('#tscroll').scrollTop : 0;
+  const y = $('#tscroll') ? $('#tscroll').scrollTop : 0, ae = document.activeElement, foc = ae && ae.id === 'tDraft', cp = foc ? ae.selectionStart : 0;
   main.innerHTML = h; $('#tscroll').scrollTop = y;
+  if (foc) { const d = $('#tDraft'); d.focus({ preventScroll: true }); try { d.setSelectionRange(cp, cp); } catch (e) {} }
 }
 const nextDue = w => { const t = sod(new Date()); if (w === 'today') return ymd(t); if (w === 'tomorrow') return ymd(addD(t, 1)); if (w === 'nextmon') return ymd(addD(t, ((8 - t.getDay()) % 7) || 7)); return ''; };
 async function taskToggle(id, el) {
@@ -988,7 +1009,7 @@ function openPlan() {
       return;
     }
     redraw();
-  }, { onInput: e => { if (e.target.id === 'pName') f.name = e.target.value; const i = e.target.dataset.pi; if (i != null) f.phases[i][e.target.dataset.pf] = e.target.value; } });
+  }, { keep: true, onInput: e => { if (e.target.id === 'pName') f.name = e.target.value; const i = e.target.dataset.pi; if (i != null) f.phases[i][e.target.dataset.pf] = e.target.value; } });
 }
 
 /* ========== 설정 ========== */
@@ -1058,8 +1079,10 @@ $('#prevBtn').onclick = () => move(-1); $('#nextBtn').onclick = () => move(1);
 $('#titleBtn').onclick = () => { if (st.tab !== 'cal') return; st.cur = sod(new Date()); render(); };
 $('#vMonth').onclick = () => { if (st.view === 'month') return; transit('down', () => { st.view = 'month'; S.view = 'month'; save(); render(); }); };
 $('#vWeek').onclick = () => { if (st.view === 'week') return; transit('up', () => { const t = new Date(); st.cur = (t.getMonth() === st.cur.getMonth() && t.getFullYear() === st.cur.getFullYear()) ? sod(t) : new Date(st.cur.getFullYear(), st.cur.getMonth(), 1); st.view = 'week'; S.view = 'week'; save(); render(); }); };
+let transiting = 0;
 function transit(kind, fn) {
   const main = $('#main'), app = $('#app');
+  if (Date.now() - transiting < 450) { fn(); return; } transiting = Date.now();
   if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) { fn(); return; }
   app.querySelectorAll('.pg').forEach(x => x.remove()); main.classList.remove('pgin-back', 'pgin-up'); main.style.background = '';
   const old = main.cloneNode(true); old.removeAttribute('id'); old.querySelectorAll('[id]').forEach(x => x.removeAttribute('id'));
