@@ -2,6 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Cache-Control" content="no-cache">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -304,6 +305,7 @@ input[type=date].inp{color-scheme:dark;min-width:0}
 </div>
 <script>
 'use strict';
+const APP_V = '3.3';
 /* ========== 기본 도구 ========== */
 const $ = s => document.querySelector(s);
 const pad = n => String(n).padStart(2, '0');
@@ -955,7 +957,7 @@ function openSettings() {
     + '<p class="note">주소와 키는 이 기기에만 저장됩니다. 비워 두면 예시 데이터로 보여 줍니다.</p>' + (demo() ? '' : '<button class="obtn" data-a="refresh" style="align-self:flex-start">캘린더 목록·색 새로 불러오기</button>'))
     + sec('월간 화면에서 숨길 캘린더', '<p class="note">숨겨도 주간과 하루 시간표에는 그대로 보입니다.</p><div class="box">' + st.cals.map(c => '<div class="boxrow"><i style="width:10px;height:10px;border-radius:5px;background:' + c.color + '"></i><span style="flex:1;font-size:15px">' + esc(c.name) + '</span><button class="switch' + (S.hiddenMonth.includes(c.id) ? '' : ' on') + '" role="switch" aria-checked="' + !S.hiddenMonth.includes(c.id) + '" aria-label="' + esc(c.name) + ' 월간 표시" data-a="hm" data-id="' + esc(c.id) + '"><i></i></button></div>').join('') + '</div>')
     + sec('표시', '<div class="box"><div class="boxrow" style="justify-content:space-between"><span style="font-size:15px">대괄호 태그 숨기기<br><span class="lab">[Golf]골프하자 → 골프하자</span></span><button class="switch' + (S.hideTags ? ' on' : '') + '" role="switch" aria-checked="' + S.hideTags + '" aria-label="대괄호 태그 숨기기" data-a="tags"><i></i></button></div><div class="boxrow" style="justify-content:space-between"><span style="font-size:15px">캘린더에 계획 막대 보기<br><span class="lab">간트의 장기 계획을 월간·주간에도 표시</span></span><button class="switch' + (S.showPlans ? ' on' : '') + '" role="switch" aria-checked="' + S.showPlans + '" aria-label="캘린더에 계획 막대 보기" data-a="plans"><i></i></button></div></div>')
-    + '<p class="note">화면 버전 3 · 데이터 창구 v' + (S.sv || '?') + ' · 테마 다크 레더 · 테마 바꾸기와 PC 넓은 배치는 다음 단계에서 열립니다.</p>';
+    + '<p class="note">화면 버전 ' + APP_V + ' · 데이터 창구 v' + (S.sv || '?') + ' · 테마 다크 레더 · 테마 바꾸기와 PC 넓은 배치는 다음 단계에서 열립니다.</p>';
   let sh;
   const redraw = () => { const b = sh.querySelector('.sbody'), y = b.scrollTop; b.innerHTML = body(); b.scrollTop = y; };
   const reset = () => { M.months = {}; M.ts = {}; T.lists = null; T.tasks = []; T.ts = 0; G.phases = null; G.ts = 0; loadLocal(); const tc = store.get('tasks'); if (tc) { T.lists = tc.lists; T.tasks = tc.tasks; } G.phases = store.get('gantt'); };
@@ -1042,9 +1044,18 @@ let tx = null, ty = null;
 $('#main').addEventListener('touchstart', e => { if (st.tab !== 'cal') return; if (e.touches.length === 1) { tx = e.touches[0].clientX; ty = e.touches[0].clientY; } }, { passive: true });
 $('#main').addEventListener('touchend', e => { if (tx == null) return; const dx = e.changedTouches[0].clientX - tx, dy = e.changedTouches[0].clientY - ty; tx = null; if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) move(dx < 0 ? 1 : -1); }, { passive: true });
 let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => render(), 200); });
-document.addEventListener('visibilitychange', () => { if (!document.hidden && !sheetStack.length) { Object.keys(M.ts).forEach(k => M.ts[k] = 0); T.ts = 0; G.ts = 0; render(); } });
+document.addEventListener('visibilitychange', () => { if (!document.hidden && !sheetStack.length) { checkUpdate(); Object.keys(M.ts).forEach(k => M.ts[k] = 0); T.ts = 0; G.ts = 0; render(); } });
 
+/* 새 화면 버전이 올라오면 저절로 새로 고침 */
+async function checkUpdate() {
+  try {
+    const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' });
+    if (!r.ok) return; const j = await r.json();
+    if (j.v && j.v !== APP_V && !sheetStack.length) location.replace(location.pathname + '?v=' + encodeURIComponent(j.v));
+  } catch (e) {}
+}
 async function boot() {
+  checkUpdate();
   loadLocal();
   render();
   if (!demo()) api('ping').then(r => { const v = r.v || 1; if (v !== S.sv) { S.sv = v; save(); setHeader(); } }).catch(() => {});
