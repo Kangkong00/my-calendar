@@ -209,7 +209,7 @@ input[type=date].inp{color-scheme:dark;min-width:0}
 .ring,.sp{position:absolute;pointer-events:none;opacity:0}
 .ring{left:11px;top:11px;width:22px;height:22px;border-radius:11px;border:1.5px solid #E3C48E}
 .sp{left:20px;top:20px;width:4px;height:4px;border-radius:2px;background:#F3DCA6;box-shadow:0 0 6px #F3DCA6}
-.tmain{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;padding:10px 0}
+.tmain{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;padding:10px 0;cursor:pointer}
 .ttl{position:relative;align-self:flex-start;max-width:100%;font-size:15px;line-height:1.35;color:var(--ink)}
 .trow.done .ttl{color:var(--dim)}
 .strike{position:absolute;left:0;right:0;top:52%;height:1.5px;border-radius:1px;transform-origin:left center;transform:scaleX(0);background:linear-gradient(90deg,#F3DCA6,#C9A46A 60%,rgba(142,107,58,.6))}
@@ -309,7 +309,7 @@ input[type=date].inp{color-scheme:dark;min-width:0}
 </div>
 <script>
 'use strict';
-const APP_V = '3.5';
+const APP_V = '3.6';
 /* ========== 기본 도구 ========== */
 const $ = s => document.querySelector(s);
 const pad = n => String(n).padStart(2, '0');
@@ -391,11 +391,17 @@ const Demo = (() => {
     duplicate: p => { const out = []; p.items.forEach(it => p.dates.forEach(d => { const b = pymd(d); let x; if (it.allDay) { const len = Math.max(1, Math.round((pymd(it.end) - pymd(it.start)) / 864e5)); x = Object.assign({}, it, { start: ymd(b), end: ymd(addD(b, len)) }); } else { const os = new Date(it.start), oe = new Date(it.end), st = at(b, mins(os) + Number(p.shift || 0)); x = Object.assign({}, it, { start: isoLocal(st), end: isoLocal(new Date(st.getTime() + (oe - os))) }); } x.id = 'd' + seq++; x.color = col(it.calId); x.recurring = false; evs.push(x); out.push(x); })); return { ok: true, events: out }; },
     delete: p => { evs = evs.filter(x => x.id !== p.id); return { ok: true }; },
     batch: p => ({ ok: true, results: p.requests.map(r => {
-      const m = r.url.match(/calendars\/([^/]+)\/events\/([^/?]+)(\/move\?destination=(.+))?/); if (!m) return { code: 404, body: null };
-      const x = evs.find(y => y.id === decodeURIComponent(m[2])); if (!x) return { code: 404, body: null };
-      if (m[3]) { x.calId = decodeURIComponent(m[4]); x.color = col(x.calId); }
-      if (r.method === 'patch') { const b = r.body; x.title = b.summary; x.location = b.location; x.desc = b.description; x.allDay = !!b.start.date; x.start = b.start.date || b.start.dateTime; x.end = b.end.date || b.end.dateTime; }
-      return { code: 200, body: { id: x.id, summary: x.title, location: x.location, description: x.desc, start: x.allDay ? { date: x.start } : { dateTime: x.start }, end: x.allDay ? { date: x.end } : { dateTime: x.end } } };
+      const u = decodeURIComponent(r.url), m = r.method;
+      let mt = u.match(/\/lists\/([^/]+)\/tasks\/([^/?]+)/);
+      if (mt) { const x = tasks.find(y => y.id === mt[2]); if (!x) return { code: 404, body: null }; if (m === 'delete') { tasks = tasks.filter(y => y.id !== x.id && y.parent !== x.id); return { code: 204, body: null }; } const b = r.body || {}; if (b.title != null) x.title = b.title; if (b.notes !== undefined) x.notes = b.notes || ''; if (b.due !== undefined) x.due = b.due ? b.due.slice(0, 10) : ''; return { code: 200, body: { id: x.id, title: x.title, notes: x.notes, due: x.due ? x.due + 'T00:00:00.000Z' : undefined, status: x.done ? 'completed' : 'needsAction' } }; }
+      mt = u.match(/\/calendars\/([^/]+)\/events(?:\/([^/?]+))?(\/move\?destination=(.+))?/); if (!mt) return { code: 404, body: null };
+      const res = x => ({ id: x.id, summary: x.title, location: x.location, description: x.desc, start: x.allDay ? { date: x.start } : { dateTime: x.start }, end: x.allDay ? { date: x.end } : { dateTime: x.end }, extendedProperties: x.gantt ? { private: x.gantt } : undefined });
+      if (!mt[2] && m === 'post') { const b = r.body, pv = b.extendedProperties && b.extendedProperties.private; const x = { id: 'd' + seq++, calId: mt[1], title: b.summary, allDay: !!b.start.date, start: b.start.date || b.start.dateTime, end: b.end.date || b.end.dateTime, color: col(mt[1]), location: b.location || '', desc: b.description || '', recurring: false, gantt: pv && pv.gantt === '1' ? Object.assign({}, pv) : null }; (x.gantt ? phases : evs).push(x); return { code: 200, body: res(x) }; }
+      const x = evs.concat(phases).find(y => y.id === mt[2]); if (!x) return { code: 404, body: null };
+      if (m === 'delete') { evs = evs.filter(y => y !== x); phases = phases.filter(y => y !== x); return { code: 204, body: null }; }
+      if (mt[3]) { x.calId = mt[4]; x.color = col(x.calId); }
+      if (m === 'patch') { const b = r.body; if (b.summary != null) x.title = b.summary; if (b.location !== undefined) x.location = b.location; if (b.description !== undefined) x.desc = b.description; if (b.start) { x.allDay = !!b.start.date; x.start = b.start.date || b.start.dateTime; x.end = b.end.date || b.end.dateTime; } if (b.extendedProperties) x.gantt = Object.assign({}, b.extendedProperties.private); }
+      return { code: 200, body: res(x) };
     }) }),
     createCalendar: p => { const c = { id: 'c' + seq++, name: p.name, color: p.color, owned: true, primary: false }; cals.push(c); return { ok: true, calendar: c }; },
     tasks: () => ({ ok: true, lists, tasks: tasks.map(x => Object.assign({}, x)) }),
@@ -889,6 +895,35 @@ function drawTasks() {
   main.innerHTML = h; $('#tscroll').scrollTop = y;
   if (foc) { const d = $('#tDraft'); d.focus({ preventScroll: true }); try { d.setSelectionRange(cp, cp); } catch (e) {} }
 }
+const TAPI = 'https://tasks.googleapis.com/tasks/v1';
+function openTask(x) {
+  const today = sod(new Date());
+  const f = { title: x.title, due: x.due || '', notes: x.notes || '', armed: false };
+  const Q = [['오늘', ymd(today)], ['내일', ymd(addD(today, 1))], ['다음 주 월', ymd(addD(today, ((8 - today.getDay()) % 7) || 7))], ['날짜 없음', '']];
+  let sh;
+  const body = () => '<label style="display:flex;flex-direction:column;gap:4px"><span class="lab">할 일</span><input class="title-inp" id="kTitle" value="' + esc(f.title) + '" autocomplete="off"></label>'
+    + sec('날짜', '<div class="row">' + Q.map(q => '<button class="pillb' + (f.due === q[1] ? ' on' : '') + '" data-a="kq" data-v="' + q[1] + '">' + q[0] + '</button>').join('') + '</div><input type="date" class="inp" id="kDue" value="' + f.due + '"><p class="note">할 일은 날짜만 저장됩니다.</p>')
+    + sec('메모', '<textarea class="inp" id="kNotes" placeholder="메모 추가">' + esc(f.notes) + '</textarea>')
+    + '<div class="row" style="gap:8px;margin-top:4px"><button class="obtn" data-a="kdel" style="flex:1;height:48px">' + (f.armed ? '한 번 더 누르면 삭제' : '삭제') + '</button><button class="gbtn" data-a="ksave" style="flex:2;height:48px">저장</button></div>';
+  const redraw = () => { const b = sh.querySelector('.sbody'), y = b.scrollTop; b.innerHTML = body(); b.scrollTop = y; };
+  const url = TAPI + '/lists/' + encodeURIComponent(x.listId) + '/tasks/' + encodeURIComponent(x.id);
+  sh = openSheet('<div class="shead"><button class="tbtn" data-a="cancel">취소</button><h2 class="serif goldtext" style="font-size:20px">할 일 수정</h2><span style="width:52px"></span></div><div class="sbody">' + body() + '</div>', async (a, t) => {
+    if (a === 'cancel') { closeSheet(); return; }
+    if (a === 'kq') { f.due = t.dataset.v; redraw(); return; }
+    if (a === 'kdel') {
+      if (!f.armed) { f.armed = true; redraw(); const d = sh.querySelector('[data-a=kdel]'); d.style.borderColor = '#E8957A'; d.style.color = '#E8957A'; return; }
+      t.disabled = true;
+      try { await batch([{ method: 'delete', url }]); T.tasks = T.tasks.filter(y => y.id !== x.id && y.parent !== x.id); saveTasks(); toast('삭제했습니다'); closeSheet(); drawTasks(); } catch (err) { toast('삭제 실패: ' + err.message); t.disabled = false; }
+      return;
+    }
+    if (a === 'ksave') {
+      const title = (f.title || '').trim(); if (!title) { toast('내용을 입력해 주세요'); return; }
+      t.disabled = true; t.textContent = '저장 중';
+      try { await batch([{ method: 'patch', url, body: { title, notes: f.notes, due: f.due ? f.due + 'T00:00:00.000Z' : null } }]); Object.assign(x, { title, notes: f.notes, due: f.due }); saveTasks(); toast('수정했습니다'); closeSheet(); drawTasks(); }
+      catch (err) { toast('수정 실패: ' + err.message); t.disabled = false; t.textContent = '저장'; }
+    }
+  }, { keep: true, onInput: e => { if (e.target.id === 'kTitle') f.title = e.target.value; if (e.target.id === 'kNotes') f.notes = e.target.value; }, onChange: e => { if (e.target.id === 'kDue') { f.due = e.target.value; redraw(); } } });
+}
 const nextDue = w => { const t = sod(new Date()); if (w === 'today') return ymd(t); if (w === 'tomorrow') return ymd(addD(t, 1)); if (w === 'nextmon') return ymd(addD(t, ((8 - t.getDay()) % 7) || 7)); return ''; };
 async function taskToggle(id, el) {
   const x = T.tasks.find(y => y.id === id); if (!x) return;
@@ -968,7 +1003,7 @@ function drawGantt() {
       h += '<section class="gdet"><div style="display:flex;align-items:center;gap:10px"><span style="width:12px;height:40px;border-radius:6px;background:linear-gradient(180deg,' + sp.color + ',' + sp.color + 'A0);box-shadow:0 0 10px ' + sp.color + '66"></span><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><h3 class="serif" style="margin:0;font-size:18px;color:var(--goldL)">' + esc(sp.name) + '</h3><span class="lab">' + md(sp.s) + ' – ' + md(new Date(sp.e.getTime() - 864e5)) + ' · ' + esc((st.calMap[sp.calId] || {}).name || '') + '</span></div><span class="serif goldtext" style="font-size:26px">' + pct + '%</span></div>'
         + '<div class="prog" style="margin:0"><div class="b"><i style="width:' + pct + '%"></i></div></div><div class="tlist" style="background:transparent;border:none">'
         + sp.phases.map(ph => { const now = !ph.done && ph.s <= today && today < ph.e; return '<div class="trow' + (ph.done ? ' done' : '') + '">' + '<i class="shine"></i>' + ckHTML(ph.pname + ' 완료', 'data-gph="' + esc(ph.calId + '|' + ph.id) + '"' + (ph.done ? ' checked' : '')) + '<div class="tmain"><span class="ttl">' + esc(ph.pname) + '<i class="strike"></i></span><span class="tmeta">' + md(ph.s) + ' – ' + md(new Date(ph.e.getTime() - 864e5)) + '</span></div>' + (now ? '<span class="tside" style="border-color:#8E6B3A">진행 중</span>' : '') + '</div>'; }).join('')
-        + '</div><p class="note">단계마다 구글 캘린더 <b>' + esc((st.calMap[sp.calId] || {}).name || '') + '</b>에 여러 날 종일 일정으로 저장되어 있습니다.</p></section>';
+        + '</div><div class="row" style="gap:8px"><button class="obtn" data-gedit="' + esc(sp.id) + '" style="flex:2;height:46px;border-color:#8E6B3A;color:var(--goldL)">계획 수정</button><button class="obtn" data-gdel="' + esc(sp.id) + '" style="flex:1;height:46px">계획 삭제</button></div><p class="note">단계마다 구글 캘린더 <b>' + esc((st.calMap[sp.calId] || {}).name || '') + '</b>에 여러 날 종일 일정으로 저장되어 있습니다.</p></section>';
     }
   }
   h += '</div>';
@@ -983,9 +1018,10 @@ async function ganttToggle(key, el) {
   setTimeout(() => { if (st.tab === 'gantt') drawGantt(); }, done ? 1400 : 750);
   try { await api('ganttDone', { calId, id, props: p.gantt, done }, true); } catch (err) { p.gantt.done = done ? '0' : '1'; toast('저장 실패: ' + err.message); drawGantt(); }
 }
-function openPlan() {
+function openPlan(P) {
   const owned = st.cals.filter(c => c.owned && !isHol(c.id)), t = sod(new Date());
-  const f = { name: '', group: '업무', cal: (owned.find(c => c.name === '<업무>') || owned[0] || {}).id, phases: [{ name: '', start: ymd(t), end: ymd(addD(t, 6)) }] };
+  const f = { name: '', group: '업무', cal: (owned.find(c => c.name === '<업무>') || owned[0] || {}).id, phases: [{ name: '', start: ymd(t), end: ymd(addD(t, 6)) }], removed: [] };
+  if (P) Object.assign(f, { name: P.name, group: P.group, cal: P.calId, phases: P.phases.map(ph => ({ id: ph.id, calId: ph.calId, name: ph.pname, start: ymd(ph.s), end: ymd(addD(ph.e, -1)), props: Object.assign({}, ph.gantt) })) });
   let sh;
   const body = () => '<label style="display:flex;flex-direction:column;gap:4px"><span class="lab">계획 이름</span><input class="title-inp" id="pName" placeholder="예: 자격증 준비" value="' + esc(f.name) + '"></label>'
     + sec('분류', '<div class="row">' + ['업무', '공부', '개인'].map(g => '<button class="pillb' + (f.group === g ? ' on' : '') + '" data-a="grp" data-v="' + g + '">' + g + '</button>').join('') + '</div>')
@@ -993,17 +1029,33 @@ function openPlan() {
     + sec('단계', f.phases.map((p, i) => '<div class="box" style="padding:10px 12px;gap:8px"><div class="row" style="flex-wrap:nowrap"><input class="inp" data-pi="' + i + '" data-pf="name" placeholder="' + (i + 1) + '단계 이름" value="' + esc(p.name) + '" style="flex:1">' + (f.phases.length > 1 ? '<button class="ibtn" data-a="prm" data-v="' + i + '" aria-label="단계 빼기">' + ICON.x + '</button>' : '') + '</div><div class="row" style="flex-wrap:nowrap"><input type="date" class="inp" data-pi="' + i + '" data-pf="start" value="' + p.start + '" style="flex:1"><span class="lab">~</span><input type="date" class="inp" data-pi="' + i + '" data-pf="end" value="' + p.end + '" style="flex:1"></div></div>').join('') + '<button class="pillb dash" data-a="padd" style="align-self:flex-start">+ 단계 추가</button>')
     + '<p class="note">단계마다 고른 캘린더에 여러 날 종일 일정으로 저장됩니다. 구글 캘린더에는 막대로 보이고, 이 앱의 캘린더 화면에서는 설정에서 켤 때만 보입니다.</p>';
   const redraw = () => { const b = sh.querySelector('.sbody'), y = b.scrollTop; b.innerHTML = body(); b.scrollTop = y; };
-  sh = openSheet('<div class="shead"><button class="tbtn" data-a="cancel">취소</button><h2 class="serif goldtext" style="font-size:20px">새 계획</h2><button class="gbtn" data-a="save">저장</button></div><div class="sbody">' + body() + '</div>', async (a, t2) => {
+  sh = openSheet('<div class="shead"><button class="tbtn" data-a="cancel">취소</button><h2 class="serif goldtext" style="font-size:20px">' + (P ? '계획 수정' : '새 계획') + '</h2><button class="gbtn" data-a="save">저장</button></div><div class="sbody">' + body() + '</div>', async (a, t2) => {
     const v = t2.dataset.v;
     if (a === 'cancel') { closeSheet(); return; }
     if (a === 'grp') f.group = v;
     if (a === 'pcal') f.cal = t2.dataset.id;
     if (a === 'padd') { const last = f.phases[f.phases.length - 1], s = addD(pymd(last.end), 1); f.phases.push({ name: '', start: ymd(s), end: ymd(addD(s, 6)) }); }
-    if (a === 'prm') f.phases.splice(Number(v), 1);
+    if (a === 'prm') { const rm = f.phases.splice(Number(v), 1)[0]; if (rm && rm.id) f.removed.push(rm); }
     if (a === 'save') {
       if (!f.name.trim()) { toast('계획 이름을 입력해 주세요'); return; }
       const ph = f.phases.map((p, i) => ({ name: p.name.trim() || (i + 1) + '단계', start: p.start, end: p.end < p.start ? p.start : p.end }));
       t2.disabled = true; t2.textContent = '저장 중';
+      if (P) {
+        try {
+          const nm = f.name.trim(), E = id => GAPI + '/calendars/' + encodeURIComponent(f.cal) + '/events' + (id ? '/' + encodeURIComponent(id) : '');
+          const moves = f.phases.filter(p => p.id && p.calId !== f.cal).map(p => ({ method: 'post', url: GAPI + '/calendars/' + encodeURIComponent(p.calId) + '/events/' + encodeURIComponent(p.id) + '/move?destination=' + encodeURIComponent(f.cal) }));
+          if (moves.length) await batch(moves);
+          const reqs = ph.map((p, i) => {
+            const src = f.phases[i], props = Object.assign({ gantt: '1', proj: P.id, done: '0' }, src.props || {}, { pname: nm, group: f.group, idx: String(i), phase: p.name });
+            const body = { summary: nm + ' · ' + p.name, start: { date: p.start }, end: { date: ymd(addD(pymd(p.end), 1)) }, extendedProperties: { private: props } };
+            if (src.id) return { method: 'patch', url: E(src.id), body };
+            body.reminders = { useDefault: false, overrides: [] }; return { method: 'post', url: E(), body };
+          }).concat(f.removed.map(p => ({ method: 'delete', url: GAPI + '/calendars/' + encodeURIComponent(p.calId) + '/events/' + encodeURIComponent(p.id) })));
+          await batch(reqs);
+          await loadGantt(true); Object.keys(M.ts).forEach(k => M.ts[k] = 0); G.sel = P.id; toast('계획을 수정했습니다'); closeAll(); drawGantt();
+        } catch (err) { toast('수정 실패: ' + err.message); t2.disabled = false; t2.textContent = '저장'; loadGantt(true).then(drawGantt).catch(() => {}); }
+        return;
+      }
       try { const r = await api('ganttCreate', { plan: { name: f.name.trim(), group: f.group, calId: f.cal, phases: ph } }, true); G.phases = (G.phases || []).concat(r.phases); store.set('gantt', G.phases); G.sel = (r.phases[0] || {}).gantt ? r.phases[0].gantt.proj : ''; Object.keys(M.ts).forEach(k => M.ts[k] = 0); toast('계획을 만들었습니다'); closeAll(); drawGantt(); }
       catch (err) { toast('저장 실패: ' + err.message); t2.disabled = false; t2.textContent = '저장'; }
       return;
@@ -1051,11 +1103,21 @@ $('#main').addEventListener('click', e => {
   if ((t = q('[data-slot]'))) { const g = $('#wkgrid'), r = g.getBoundingClientRect(), px = Number(g.dataset.px); openCreate({ date: pymd(t.dataset.slot), min: Math.max(0, Math.min(1410, Math.floor(((e.clientY - r.top - 8) / px * 60) / 30) * 30)) }); return; }
   if ((t = q('[data-when]'))) { T.when = t.dataset.when; const d = $('#tDraft'); T.draft = d ? d.value : ''; drawTasks(); $('#tDraft').focus(); return; }
   if (q('[data-tadd]')) { taskAdd(); return; }
+  if ((t = q('.trow[data-tid] .tmain'))) { const x = T.tasks.find(y => y.id === t.closest('.trow').dataset.tid); if (x && !String(x.id).startsWith('tmp')) { if (S.sv && S.sv < 3) { toast('데이터 창구 업데이트 후 쓸 수 있어요'); return; } openTask(x); } return; }
   if ((t = q('[data-tt]'))) { taskMove([t.dataset.tt]); return; }
   if (q('[data-rollall]')) { const today = ymd(sod(new Date())); taskMove(T.tasks.filter(x => x.listId === S.listId && !x.done && x.due && x.due < today).map(x => x.id)); return; }
   if (q('[data-donetog]')) { T.showDone = !T.showDone; drawTasks(); return; }
   if ((t = q('[data-gf]'))) { G.filter = t.dataset.gf; drawGantt(); return; }
   if (q('[data-gnew]')) { openPlan(); return; }
+  if ((t = q('[data-gedit]'))) { if (S.sv && S.sv < 3) { toast('데이터 창구 업데이트 후 쓸 수 있어요'); return; } const p = projects().find(x => x.id === t.dataset.gedit); if (p) openPlan(p); return; }
+  if ((t = q('[data-gdel]'))) {
+    if (!t.dataset.armed) { t.dataset.armed = '1'; t.textContent = '한 번 더 누르면 삭제'; t.style.borderColor = '#E8957A'; t.style.color = '#E8957A'; return; }
+    const p = projects().find(x => x.id === t.dataset.gdel); if (!p) return; t.disabled = true;
+    batch(p.phases.map(ph => ({ method: 'delete', url: GAPI + '/calendars/' + encodeURIComponent(ph.calId) + '/events/' + encodeURIComponent(ph.id) })))
+      .then(() => { G.phases = (G.phases || []).filter(x => !(x.gantt && x.gantt.proj === p.id)); store.set('gantt', G.phases); G.sel = ''; Object.keys(M.ts).forEach(k => M.ts[k] = 0); toast('계획을 삭제했습니다'); drawGantt(); })
+      .catch(err => { toast('삭제 실패: ' + err.message); loadGantt(true).then(drawGantt); });
+    return;
+  }
   if ((t = q('[data-gsel]'))) { G.sel = G.sel === t.dataset.gsel ? '' : t.dataset.gsel; drawGantt(); return; }
 });
 $('#main').addEventListener('change', e => {
