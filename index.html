@@ -305,7 +305,7 @@ input[type=date].inp{color-scheme:dark;min-width:0}
 </div>
 <script>
 'use strict';
-const APP_V = '3.3';
+const APP_V = '3.4';
 /* ========== 기본 도구 ========== */
 const $ = s => document.querySelector(s);
 const pad = n => String(n).padStart(2, '0');
@@ -386,6 +386,13 @@ const Demo = (() => {
     create: p => { const ev = Object.assign({ id: 'd' + seq++, color: col(p.event.calId), recurring: !!(p.event.repeat && p.event.repeat.freq) }, p.event); delete ev.repeat; evs.push(ev); return { ok: true, event: ev }; },
     duplicate: p => { const out = []; p.items.forEach(it => p.dates.forEach(d => { const b = pymd(d); let x; if (it.allDay) { const len = Math.max(1, Math.round((pymd(it.end) - pymd(it.start)) / 864e5)); x = Object.assign({}, it, { start: ymd(b), end: ymd(addD(b, len)) }); } else { const os = new Date(it.start), oe = new Date(it.end), st = at(b, mins(os) + Number(p.shift || 0)); x = Object.assign({}, it, { start: isoLocal(st), end: isoLocal(new Date(st.getTime() + (oe - os))) }); } x.id = 'd' + seq++; x.color = col(it.calId); x.recurring = false; evs.push(x); out.push(x); })); return { ok: true, events: out }; },
     delete: p => { evs = evs.filter(x => x.id !== p.id); return { ok: true }; },
+    batch: p => ({ ok: true, results: p.requests.map(r => {
+      const m = r.url.match(/calendars\/([^/]+)\/events\/([^/?]+)(\/move\?destination=(.+))?/); if (!m) return { code: 404, body: null };
+      const x = evs.find(y => y.id === decodeURIComponent(m[2])); if (!x) return { code: 404, body: null };
+      if (m[3]) { x.calId = decodeURIComponent(m[4]); x.color = col(x.calId); }
+      if (r.method === 'patch') { const b = r.body; x.title = b.summary; x.location = b.location; x.desc = b.description; x.allDay = !!b.start.date; x.start = b.start.date || b.start.dateTime; x.end = b.end.date || b.end.dateTime; }
+      return { code: 200, body: { id: x.id, summary: x.title, location: x.location, description: x.desc, start: x.allDay ? { date: x.start } : { dateTime: x.start }, end: x.allDay ? { date: x.end } : { dateTime: x.end } } };
+    }) }),
     createCalendar: p => { const c = { id: 'c' + seq++, name: p.name, color: p.color, owned: true, primary: false }; cals.push(c); return { ok: true, calendar: c }; },
     tasks: () => ({ ok: true, lists, tasks: tasks.map(x => Object.assign({}, x)) }),
     taskAdd: p => { const x = { id: 't' + seq++, listId: p.listId, title: p.title, notes: '', due: p.due || '', done: false, completed: '', parent: '' }; tasks.unshift(x); return { ok: true, task: x }; },
@@ -599,6 +606,30 @@ function closeSheet() { const e = sheetStack.pop(); if (!e) return; e.sh.classLi
 function closeAll() { while (sheetStack.length) closeSheet(); }
 const sec = (t, inner) => '<section style="display:flex;flex-direction:column;gap:10px"><h3 class="serif" style="margin:0;font-size:15px;color:var(--goldL)">' + t + '</h3>' + inner + '</section>';
 
+/* ========== 일정 수정 (중계 이용) ========== */
+const GAPI = 'https://www.googleapis.com/calendar/v3';
+const EVC = { '1': '#7986CB', '2': '#33B679', '3': '#8E24AA', '4': '#E67C73', '5': '#F6BF26', '6': '#F4511E', '7': '#039BE5', '8': '#616161', '9': '#3F51B5', '10': '#0B8043', '11': '#D50000' };
+function fromRes(it, calId) {
+  const allDay = !!(it.start && it.start.date), pv = (it.extendedProperties && it.extendedProperties.private) || {};
+  return { id: it.id, calId, title: it.summary || '(제목 없음)', allDay, start: allDay ? it.start.date : it.start.dateTime, end: allDay ? it.end.date : it.end.dateTime,
+    color: it.colorId && EVC[it.colorId] ? EVC[it.colorId] : ((st.calMap[calId] || {}).color || '#8E6B3A'), location: it.location || '', desc: it.description || '', recurring: !!it.recurringEventId, gantt: pv.gantt === '1' ? pv : null };
+}
+async function batch(requests) {
+  const r = await api('batch', { requests }, true);
+  r.results.forEach(x => { if (x.code >= 300) throw new Error((x.body && x.body.error && x.body.error.message) || ('오류 ' + x.code)); });
+  return r.results;
+}
+async function updateEvent(old, ev, alarmsTouched) {
+  const body = { summary: ev.title, location: ev.location || '', description: ev.desc || '' };
+  if (ev.allDay) { body.start = { date: ev.start, dateTime: null }; body.end = { date: ev.end, dateTime: null }; }
+  else { body.start = { dateTime: ev.start, timeZone: 'Asia/Seoul', date: null }; body.end = { dateTime: ev.end, timeZone: 'Asia/Seoul', date: null }; }
+  if (alarmsTouched) body.reminders = { useDefault: false, overrides: (ev.alarms || []).map(m => ({ method: 'popup', minutes: m })) };
+  let calId = old.calId;
+  if (ev.calId !== old.calId) { await batch([{ method: 'post', url: GAPI + '/calendars/' + encodeURIComponent(old.calId) + '/events/' + encodeURIComponent(old.id) + '/move?destination=' + encodeURIComponent(ev.calId) }]); calId = ev.calId; }
+  const res = await batch([{ method: 'patch', url: GAPI + '/calendars/' + encodeURIComponent(calId) + '/events/' + encodeURIComponent(old.id), body }]);
+  return fromRes(res[0].body, calId);
+}
+
 /* ========== 하루 시간표 ========== */
 async function openDay(d) {
   const a = addD(d, -1), b = addD(d, 2);
@@ -637,12 +668,13 @@ function openDetail(ev) {
     + '<div style="display:flex;gap:12px;align-items:flex-start"><span style="width:10px;align-self:stretch;min-height:44px;border-radius:5px;background:linear-gradient(180deg,' + ev.color + ',' + ev.color + 'A0);box-shadow:0 0 10px ' + ev.color + '66"></span><div style="display:flex;flex-direction:column;gap:4px"><h2 class="serif" style="margin:0;font-size:21px;color:var(--ink)">' + esc(ev.title) + '</h2><span class="note">' + when + '</span><span class="note">' + esc(cal.name) + (ev.recurring ? ' · 반복 일정' : '') + '</span></div></div>'
     + (ev.location ? '<div><div class="lab">장소</div><p class="note" style="color:var(--ink)">' + esc(ev.location) + '</p></div>' : '')
     + (ev.desc ? '<div><div class="lab">메모</div><p class="note" style="color:var(--ink);white-space:pre-wrap">' + esc(ev.desc) + '</p></div>' : '')
-    + '<div class="row" style="gap:8px"><button class="gbtn" data-a="dup" style="flex:2;height:48px">복제하기</button>' + (cal.owned ? '<button class="obtn" data-a="del" style="flex:1;height:48px">' + (ev.recurring ? '이 날만 삭제' : '삭제') + '</button>' : '') + '</div>'
-    + (ev.recurring ? '<p class="note">반복 전체를 지우거나 고치려면 구글 캘린더에서 해 주세요.</p>' : '') + '</div>';
+    + '<div class="row" style="gap:8px">' + (cal.owned ? '<button class="obtn" data-a="edit" style="flex:1;height:48px;border-color:#8E6B3A;color:var(--goldL)">수정</button>' : '') + '<button class="gbtn" data-a="dup" style="flex:1.4;height:48px">복제하기</button>' + (cal.owned ? '<button class="obtn" data-a="del" style="flex:1;height:48px">' + (ev.recurring ? '이 날만 삭제' : '삭제') + '</button>' : '') + '</div>'
+    + (ev.recurring ? '<p class="note">수정·삭제는 이 날 일정에만 적용됩니다. 반복 전체를 바꾸려면 구글 캘린더에서 해 주세요.</p>' : '') + '</div>';
   let armed = false;
   openSheet(html, async (a, t) => {
     if (a === 'close') closeSheet();
     if (a === 'dup') openDuplicate({ mode: 'event', items: [ev] });
+    if (a === 'edit') { if (S.sv && S.sv < 3) { toast('데이터 창구 업데이트 후 쓸 수 있어요'); return; } openCreate({ edit: ev }); }
     if (a === 'del') {
       if (!armed) { armed = true; t.textContent = '한 번 더 누르면 삭제'; t.style.borderColor = '#E8957A'; t.style.color = '#E8957A'; return; }
       t.disabled = true;
@@ -657,6 +689,9 @@ function openCreate(pre = {}) {
   const owned = st.cals.filter(c => c.owned && !isHol(c.id));
   const defCal = (owned.find(c => c.name === '<업무>') || owned.find(c => c.primary) || owned[0] || {}).id;
   const f = { title: '', cal: defCal, allDay: false, date: ymd(d), endDate: ymd(d), st: pre.min != null ? pre.min : (same(d, now) ? Math.min(1410, Math.ceil((mins(now) + 1) / 30) * 30) : 540), dur: 60, open: '', rep: '', days: { [d.getDay()]: true }, alarms: [], adding: false, loc: '', memo: '', newOpen: false, newName: '', newColor: '#8E6B3A' };
+  const E = pre.edit;
+  if (E) Object.assign(f, { title: E.title, cal: E.calId, allDay: !!E.allDay, date: ymd(E.s), endDate: ymd(E.allDay ? addD(E.e, -1) : E.s), st: mins(E.s), dur: Math.max(5, Math.round((E.e - E.s) / 6e4)), loc: E.location || '', memo: E.desc || '', alarmsTouched: false });
+  if (E && E.allDay) f.dur = 60;
   const AL = [[0, '정시'], [5, '5분 전'], [10, '10분 전'], [30, '30분 전'], [60, '1시간 전'], [1440, '하루 전']];
   const DU = [[30, '30분'], [60, '1시간'], [90, '1시간 반'], [120, '2시간'], [180, '3시간'], [480, '8시간']];
   const RP = [['', '안 함'], ['daily', '매일'], ['weekly', '매주'], ['monthly', '매월'], ['yearly', '매년']];
@@ -674,15 +709,15 @@ function openCreate(pre = {}) {
       + (f.open === 's' ? '<div class="picker"><div class="scrollx" id="slotRow" style="padding:0 14px">' + slots() + '</div><div class="fine"><button data-a="fine" data-v="-10">− 10분</button><button data-a="fine" data-v="-5">− 5분</button><span style="width:1px;height:22px;background:var(--line)"></span><button data-a="fine" data-v="5">+ 5분</button><button data-a="fine" data-v="10">+ 10분</button></div></div>' : '')
       + '<div class="boxrow"><span class="lab" style="width:30px">종료</span><span class="lab" style="flex:1">' + durTxt() + (f.st + f.dur >= 1440 ? ' · 다음 날' : '') + '</span><button class="timebtn' + (f.open === 'e' ? ' on' : '') + '" data-a="openE">' + ko(f.st + f.dur) + '</button></div>'
       + (f.open === 'e' ? '<div class="picker" style="border-bottom:none"><div class="scrollx" style="padding:0 14px">' + DU.map(x => '<button class="pillb' + (f.dur === x[0] ? ' on' : '') + '" data-a="dur" data-v="' + x[0] + '">' + x[1] + '</button>').join('') + '</div><div class="fine"><button data-a="dfine" data-v="-10">− 10분</button><button data-a="dfine" data-v="-5">− 5분</button><span style="width:1px;height:22px;background:var(--line)"></span><button data-a="dfine" data-v="5">+ 5분</button><button data-a="dfine" data-v="10">+ 10분</button></div></div>' : '')) + '</div>'
-    + '<div style="display:flex;flex-direction:column;gap:8px"><span class="lab">반복</span><div class="row">' + RP.map(r => '<button class="pillb' + (f.rep === r[0] ? ' on' : '') + '" data-a="rep" data-v="' + r[0] + '">' + r[1] + '</button>').join('') + '</div>'
-    + (f.rep === 'weekly' ? '<div class="wdays">' + WD.map((w, i) => '<button class="' + (f.days[i] ? 'on' : '') + '" data-a="wd" data-v="' + i + '">' + w + '</button>').join('') + '</div>' : '') + '</div>'
-    + '<div style="display:flex;flex-direction:column;gap:8px"><span class="lab">알림 · 평소엔 꺼짐</span><div class="row">' + f.alarms.map(v => '<span class="alarmchip">' + AL.find(x => x[0] === v)[1] + '<button data-a="alrm" data-v="' + v + '" aria-label="알림 끄기">' + ICON.x + '</button></span>').join('') + '<button class="pillb dash" data-a="addal" style="min-height:40px">' + (f.adding ? '닫기' : '+ 알림 추가') + '</button></div>'
+    + (E ? (E.recurring ? '<p class="note">반복 일정 중 <b>이 날 것만</b> 바뀝니다.</p>' : '') : '<div style="display:flex;flex-direction:column;gap:8px"><span class="lab">반복</span><div class="row">' + RP.map(r => '<button class="pillb' + (f.rep === r[0] ? ' on' : '') + '" data-a="rep" data-v="' + r[0] + '">' + r[1] + '</button>').join('') + '</div>'
+    + (f.rep === 'weekly' ? '<div class="wdays">' + WD.map((w, i) => '<button class="' + (f.days[i] ? 'on' : '') + '" data-a="wd" data-v="' + i + '">' + w + '</button>').join('') + '</div>' : '') + '</div>')
+    + '<div style="display:flex;flex-direction:column;gap:8px"><span class="lab">' + (E && !f.alarmsTouched ? '알림 · 바꾸지 않으면 기존 알림 그대로' : '알림 · 평소엔 꺼짐') + '</span><div class="row">' + f.alarms.map(v => '<span class="alarmchip">' + AL.find(x => x[0] === v)[1] + '<button data-a="alrm" data-v="' + v + '" aria-label="알림 끄기">' + ICON.x + '</button></span>').join('') + '<button class="pillb dash" data-a="addal" style="min-height:40px">' + (f.adding ? '닫기' : '+ 알림 추가') + '</button></div>'
     + (f.adding ? '<div class="row" style="padding:10px;border-radius:12px;background:#1B130E;border:1px solid var(--line)">' + AL.map(x => '<button class="pillb' + (f.alarms.includes(x[0]) ? ' on' : '') + '" data-a="alrm" data-v="' + x[0] + '">' + x[1] + '</button>').join('') + '</div>' : '') + '</div>'
     + '<label style="display:flex;flex-direction:column;gap:6px"><span class="lab">장소</span><input class="inp" id="fLoc" placeholder="장소 추가" value="' + esc(f.loc) + '"></label>'
     + '<label style="display:flex;flex-direction:column;gap:6px"><span class="lab">메모</span><textarea class="inp" id="fMemo" placeholder="설명 추가">' + esc(f.memo) + '</textarea></label>'
-    + '<p class="note">구글 캘린더 <b>' + esc((st.calMap[f.cal] || {}).name || '') + '</b>에 저장됩니다.</p>';
+    + '<p class="note">구글 캘린더 <b>' + esc((st.calMap[f.cal] || {}).name || '') + '</b>에 저장됩니다.</p>' + (E && E.recurring && f.cal !== E.calId ? '<p class="note" style="color:var(--sun)">반복 일정은 캘린더를 옮길 수 없어요.</p>' : '');
   const redraw = () => { const b = sh.querySelector('.sbody'), y = b.scrollTop; b.innerHTML = body(); b.scrollTop = y; const r = sh.querySelector('#slotRow .on'); if (r) r.parentNode.scrollLeft = r.offsetLeft - 120; };
-  sh = openSheet('<div class="shead"><button class="tbtn" data-a="cancel">취소</button><h2 class="serif goldtext" style="font-size:20px;letter-spacing:1px">새 일정</h2><button class="gbtn" data-a="save">저장</button></div><div class="sbody">' + body() + '</div>', async (a, t) => {
+  sh = openSheet('<div class="shead"><button class="tbtn" data-a="cancel">취소</button><h2 class="serif goldtext" style="font-size:20px;letter-spacing:1px">' + (E ? '일정 수정' : '새 일정') + '</h2><button class="gbtn" data-a="save">저장</button></div><div class="sbody">' + body() + '</div>', async (a, t) => {
     const v = t.dataset.v;
     switch (a) {
       case 'cancel': closeSheet(); return;
@@ -705,7 +740,7 @@ function openCreate(pre = {}) {
       case 'rep': f.rep = v; break;
       case 'wd': f.days[v] = !f.days[v]; break;
       case 'addal': f.adding = !f.adding; break;
-      case 'alrm': { const n = Number(v); f.alarms = f.alarms.includes(n) ? f.alarms.filter(x => x !== n) : f.alarms.concat([n]).sort((p, q) => p - q); break; }
+      case 'alrm': { f.alarmsTouched = true; const n = Number(v); f.alarms = f.alarms.includes(n) ? f.alarms.filter(x => x !== n) : f.alarms.concat([n]).sort((p, q) => p - q); break; }
       case 'save': {
         const title = (f.title || '').trim(); if (!title) { toast('제목을 입력해 주세요'); sh.querySelector('#fTitle').focus(); return; }
         if (!f.cal) { toast('캘린더를 골라 주세요'); return; }
@@ -714,6 +749,13 @@ function openCreate(pre = {}) {
         else { const s = new Date(base.getFullYear(), base.getMonth(), base.getDate(), 0, f.st); ev.start = isoLocal(s); ev.end = isoLocal(new Date(s.getTime() + f.dur * 6e4)); }
         if (f.rep) ev.repeat = { freq: f.rep, days: f.rep === 'weekly' ? Object.keys(f.days).filter(k => f.days[k]).map(Number) : [] };
         t.disabled = true; t.textContent = '저장 중';
+        if (E) {
+          if (E.recurring && f.cal !== E.calId) { toast('반복 일정은 캘린더를 옮길 수 없어요'); t.disabled = false; t.textContent = '저장'; return; }
+          t.disabled = true; t.textContent = '저장 중';
+          try { const nev = await updateEvent(E, ev, f.alarmsTouched); cacheRemove(E); cacheAdd([nev]); toast('수정했습니다'); closeAll(); st.cur = base; render(); }
+          catch (err) { toast('수정 실패: ' + err.message); t.disabled = false; t.textContent = '저장'; }
+          return;
+        }
         try {
           const r = await api('create', { event: ev }, true);
           if (f.rep) { Object.keys(M.ts).forEach(k => M.ts[k] = 0); } else if (r.event) cacheAdd([r.event]);
@@ -728,7 +770,7 @@ function openCreate(pre = {}) {
     onInput: e => { const id = e.target.id; if (id === 'fTitle') f.title = e.target.value; if (id === 'fLoc') f.loc = e.target.value; if (id === 'fMemo') f.memo = e.target.value; if (id === 'fNewName') f.newName = e.target.value; if (id === 'fNewColor') f.newColor = e.target.value; },
     onChange: e => { const id = e.target.id; if (id === 'fDate') { f.date = e.target.value; if (f.endDate < f.date) f.endDate = f.date; redraw(); } if (id === 'fEnd') f.endDate = e.target.value; if (id === 'fNewColor') redraw(); }
   });
-  if (!pre.date) setTimeout(() => { const i = sh.querySelector('#fTitle'); if (i) i.focus(); }, 380);
+  if (!pre.date && !E) setTimeout(() => { const i = sh.querySelector('#fTitle'); if (i) i.focus(); }, 380);
 }
 
 /* ========== 복제 ========== */
