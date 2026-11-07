@@ -34,7 +34,7 @@
   --gold:linear-gradient(135deg,#F3DCA6 0%,#C9A46A 50%,#8E6B3A 100%); --goldL:#E3C48E; --goldM:#C9A46A; --dark:#140D09;
   --sun:#E8957A; --sat:#93B8DA;
   --card:linear-gradient(180deg,#1C130E,#110B08);
-  --sat-top:env(safe-area-inset-top,0px); --sat-bot:env(safe-area-inset-bottom,0px);
+  --sat-top:env(safe-area-inset-top,0px); --sat-bot:env(safe-area-inset-bottom,0px); --nb:max(6px,calc(var(--sat-bot) - 12px)); --navh:calc(60px + var(--nb));
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 button,label,a,.pillb,.mday,.blk,.tb{touch-action:manipulation;-webkit-user-select:none;user-select:none}
@@ -94,7 +94,7 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;position:relative}
 .wkh.today b{background:var(--gold);color:var(--dark)}
 .wkh.sun{color:var(--sun)} .wkh.sat{color:var(--sat)}
 .wkallday{position:relative;margin:0 6px 4px 34px}
-.wkgrid{flex:1;min-height:0;margin:0 6px calc(76px + var(--sat-bot)) 0;position:relative;border-radius:14px;background:linear-gradient(180deg,#1A120D,#0F0A07);border:1px solid var(--line);box-shadow:inset 0 1px 0 rgba(227,196,142,.12);overflow:hidden}
+.wkgrid{flex:1;min-height:0;margin:0 6px calc(var(--navh) + 6px) 0;position:relative;border-radius:14px;background:linear-gradient(180deg,#1A120D,#0F0A07);border:1px solid var(--line);box-shadow:inset 0 1px 0 rgba(227,196,142,.12);overflow:hidden}
 .wkcols{position:absolute;left:34px;right:0;top:0;bottom:0;display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
 .wkcol{position:relative;border-left:1px solid var(--line3)}
 .wkcol.today{background:linear-gradient(180deg,rgba(201,164,106,.10),rgba(201,164,106,.02))}
@@ -106,12 +106,12 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;position:relative}
 .nowline{position:absolute;height:1.5px;background:linear-gradient(90deg,#E3C48E,rgba(227,196,142,.15));pointer-events:none;box-shadow:0 0 6px rgba(227,196,142,.6)}
 
 /* nav */
-nav{position:absolute;left:0;right:0;bottom:0;height:calc(70px + var(--sat-bot));padding:0 12px var(--sat-bot);display:flex;align-items:center;justify-content:space-around;background:linear-gradient(180deg,rgba(10,7,5,.75),#070504);border-top:1px solid var(--line2);z-index:5}
+nav{position:absolute;left:0;right:0;bottom:0;height:var(--navh);padding:0 12px var(--nb);display:flex;align-items:center;justify-content:space-around;background:linear-gradient(180deg,rgba(10,7,5,.75),#070504);border-top:1px solid var(--line2);z-index:5}
 nav button{min-width:58px;height:48px;border:none;background:transparent;color:var(--mut);font-size:calc(10.5px*var(--fz,1));display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
 nav button.on{color:var(--goldL);font-weight:700}
 nav .fab{width:54px;height:54px;min-width:54px;border-radius:27px;border:1px solid #F3DCA6;background:var(--gold);color:var(--dark);box-shadow:0 8px 20px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.5)}
 nav .fab:active{transform:scale(.94)}
-.month{padding-bottom:calc(72px + var(--sat-bot))}
+.month{padding-bottom:calc(var(--navh) + 2px)}
 
 /* sheets */
 .dim{position:absolute;inset:0;background:rgba(3,2,1,.55);z-index:20;animation:fade .25s ease both}
@@ -183,7 +183,7 @@ input[type=date].inp{color-scheme:dark;min-width:0}
 .mini span{text-align:center;font-size:calc(10.5px*var(--fz,1));color:var(--mut)}
 .summary{margin:0;padding:12px 14px;border-radius:12px;background:#0F0A07;border:1px solid var(--line);font-size:calc(13px*var(--fz,1));line-height:1.6}
 
-.toast{position:absolute;left:50%;bottom:calc(92px + var(--sat-bot));transform:translateX(-50%);z-index:40;padding:10px 16px;border-radius:20px;background:#1E150F;border:1px solid #6E5236;color:var(--goldL);font-size:calc(13px*var(--fz,1));box-shadow:0 8px 20px rgba(0,0,0,.6);animation:toast 2.4s ease both;white-space:nowrap}
+.toast{position:absolute;left:50%;bottom:calc(var(--navh) + 22px);transform:translateX(-50%);z-index:40;padding:10px 16px;border-radius:20px;background:#1E150F;border:1px solid #6E5236;color:var(--goldL);font-size:calc(13px*var(--fz,1));box-shadow:0 8px 20px rgba(0,0,0,.6);animation:toast 2.4s ease both;white-space:nowrap}
 .loading{position:absolute;top:4px;right:14px;font-size:calc(10.5px*var(--fz,1));color:var(--mut);z-index:3}
 .banner{margin:0 12px 6px;padding:8px 12px;border-radius:10px;border:1px solid #6E5236;background:rgba(201,164,106,.08);font-size:calc(11.5px*var(--fz,1));color:var(--goldL);display:flex;justify-content:space-between;align-items:center;gap:8px}
 .banner button{border:none;background:none;color:var(--goldL);text-decoration:underline;font-size:calc(11.5px*var(--fz,1));padding:4px}
@@ -196,7 +196,7 @@ input[type=date].inp{color-scheme:dark;min-width:0}
 @keyframes slideR{from{transform:translateX(-24px);opacity:.3}to{transform:none;opacity:1}}
 .anim-l{animation:slideL .28s ease both}.anim-r{animation:slideR .28s ease both}
 
-.scroller{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 12px calc(96px + var(--sat-bot))}
+.scroller{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 12px calc(var(--navh) + 26px)}
 .sync{position:absolute;top:2px;right:16px;width:6px;height:6px;border-radius:3px;background:var(--goldL);box-shadow:0 0 8px var(--goldL);animation:pulse 1s ease-in-out infinite;z-index:4}
 @keyframes pulse{0%,100%{opacity:.25}50%{opacity:1}}
 /* tasks */
@@ -380,7 +380,7 @@ input[type=date].inp{color-scheme:dark;min-width:0}
 </div>
 <script>
 'use strict';
-const APP_V = '3.14';
+const APP_V = '3.15';
 /* ========== 기본 도구 ========== */
 const $ = s => document.querySelector(s);
 const pad = n => String(n).padStart(2, '0');

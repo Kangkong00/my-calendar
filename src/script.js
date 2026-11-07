@@ -1,6 +1,6 @@
 <script>
 'use strict';
-const APP_V = '3.14';
+const APP_V = '3.15';
 /* ========== 기본 도구 ========== */
 const $ = s => document.querySelector(s);
 const pad = n => String(n).padStart(2, '0');
