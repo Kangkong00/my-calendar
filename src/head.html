@@ -27,14 +27,26 @@
 <link rel="apple-touch-startup-image" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="splash/750x1334.png?v=2">
 <link rel="preload" as="image" href="splash/cover.jpg?v=2" fetchpriority="high">
 <link rel="stylesheet" media="print" onload="this.media='all'" href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700;800&family=Noto+Sans+KR:wght@400;500;700&display=swap">
-<script>(function(){var d=document.documentElement,g=0;function f(){var s=screen,p=innerHeight>=innerWidth,h=p?Math.max(s.width,s.height):Math.min(s.width,s.height),x=h-innerHeight;var sa=navigator.standalone||(window.matchMedia&&(matchMedia('(display-mode: standalone)').matches||matchMedia('(display-mode: fullscreen)').matches));if(!sa)x=0;try{if(JSON.parse(localStorage.getItem('cal.settings')||'{}').noGap)x=0}catch(e){}if(x>=0&&x<=80){g=x;d.style.setProperty('--gap',g+'px')}}f();addEventListener('resize',f);var tf=function(){var e=document.activeElement;return e&&(e.tagName==='INPUT'||e.tagName==='TEXTAREA'||e.tagName==='SELECT'||e.isContentEditable)},rs=function(){if(!tf()&&(window.scrollY||d.scrollTop))window.scrollTo(0,0)};addEventListener('scroll',rs,{passive:true});document.addEventListener('focusout',function(){setTimeout(rs,60)});addEventListener('orientationchange',function(){setTimeout(f,300)});try{var z=JSON.parse(localStorage.getItem('cal.settings')||'{}').fz;if(z)d.style.setProperty('--fz',z)}catch(e){}})()</script>
+<script>/* 화면 높이 맞춤 + 글자 배율 (CLAUDE.md 7장). 홈 화면 앱에서 상태바 밑까지 그려지면(안전영역 위쪽>0) 앱이 화면 전체를 차지하므로, iOS가 알려주는 높이 대신 기기 화면 높이(px)를 그대로 쓴다. */
+(function(){var d=document.documentElement,cfg={};try{cfg=JSON.parse(localStorage.getItem('cal.settings')||'{}')||{}}catch(e){}
+if(cfg.fz)d.style.setProperty('--fzu',cfg.fz);
+var pr=null;function safeTop(){try{if(!pr){pr=document.createElement('i');pr.style.cssText='position:absolute;visibility:hidden;pointer-events:none;top:0;left:0;width:0;padding-top:var(--qa-sat-top,env(safe-area-inset-top,0px))';d.appendChild(pr)}return parseFloat(getComputedStyle(pr).paddingTop)||0}catch(e){return 0}}
+function fit(){var s=screen,port=innerHeight>=innerWidth,H=port?Math.max(s.width,s.height):Math.min(s.width,s.height),sa=!!(navigator.standalone||(window.matchMedia&&(matchMedia('(display-mode: standalone)').matches||matchMedia('(display-mode: fullscreen)').matches))),top=safeTop(),why;
+if(!sa)why='브라우저';else if(cfg.noGap)why='꺼짐';else if(!port)why='가로';else if(top<=0)why='상태바 밖';else if(H<innerHeight||H-innerHeight>140)why='크기 불일치';else why='';
+if(why){d.style.removeProperty('--apph')}else{d.style.setProperty('--apph',H+'px')}d.setAttribute('data-fit',why||'화면 높이 '+H+'px')}
+fit();addEventListener('resize',fit);addEventListener('orientationchange',function(){setTimeout(fit,300)});document.addEventListener('DOMContentLoaded',fit);addEventListener('load',fit);
+var tf=function(){var e=document.activeElement;return e&&(e.tagName==='INPUT'||e.tagName==='TEXTAREA'||e.tagName==='SELECT'||e.isContentEditable)},rs=function(){if(!tf()&&(window.scrollY||d.scrollTop))window.scrollTo(0,0)};addEventListener('scroll',rs,{passive:true});document.addEventListener('focusout',function(){setTimeout(rs,60)});})()</script>
 <style>
 :root{
   --bg:#070504; --ink:#EFE3CF; --mut:#A89275; --dim:#7F6B55; --line:#3A2A1E; --line2:#241911; --line3:#1E150F;
   --gold:linear-gradient(135deg,#F3DCA6 0%,#C9A46A 50%,#8E6B3A 100%); --goldL:#E3C48E; --goldM:#C9A46A; --dark:#140D09;
   --sun:#E8957A; --sat:#93B8DA;
   --card:linear-gradient(180deg,#1C130E,#110B08);
-  --sat-top:env(safe-area-inset-top,0px); --sat-bot:env(safe-area-inset-bottom,0px); --nb:max(6px,calc(var(--sat-bot) - 12px)); --navh:calc(60px + var(--nb));
+  --sat-top:var(--qa-sat-top,env(safe-area-inset-top,0px)); --sat-bot:var(--qa-sat-bot,env(safe-area-inset-bottom,0px));
+  /* 하단 바: 버튼 줄 56px + 아래 여백(홈 표시줄 영역을 14px 겹쳐 씀, 홈 표시줄 없는 기기는 6px) */
+  --nb:max(6px,calc(var(--sat-bot) - 14px)); --navh:calc(56px + var(--nb));
+  /* 글자 배율: 설정값(--fzu: 작게 .92 / 보통 1 / 크게 1.1) × 기본 0.9 — 모든 글자는 calc(Npx*var(--fz,1)) */
+  --fz:calc(var(--fzu,1) * 0.9);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 button,label,a,.pillb,.mday,.blk,.tb{touch-action:manipulation;-webkit-user-select:none;user-select:none}
@@ -42,7 +54,7 @@ select{font-size:16px!important}
 .scrollx{overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
 .sbody{overscroll-behavior:contain}
 html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',system-ui,sans-serif;overscroll-behavior:none}
-html{height:calc(100% + var(--gap,0px))}
+html{height:var(--apph,100%)}
 body{position:relative}
 button,input,select,textarea{font-family:inherit;color:inherit}
 button{cursor:pointer}
@@ -107,9 +119,9 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;position:relative}
 
 /* nav */
 nav{position:absolute;left:0;right:0;bottom:0;height:var(--navh);padding:0 12px var(--nb);display:flex;align-items:center;justify-content:space-around;background:linear-gradient(180deg,rgba(10,7,5,.75),#070504);border-top:1px solid var(--line2);z-index:5}
-nav button{min-width:58px;height:48px;border:none;background:transparent;color:var(--mut);font-size:calc(10.5px*var(--fz,1));display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+nav button{min-width:58px;height:46px;border:none;background:transparent;color:var(--mut);font-size:calc(10.5px*var(--fz,1));display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
 nav button.on{color:var(--goldL);font-weight:700}
-nav .fab{width:54px;height:54px;min-width:54px;border-radius:27px;border:1px solid #F3DCA6;background:var(--gold);color:var(--dark);box-shadow:0 8px 20px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.5)}
+nav .fab{width:52px;height:52px;min-width:52px;border-radius:26px;border:1px solid #F3DCA6;background:var(--gold);color:var(--dark);box-shadow:0 8px 20px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.5)}
 nav .fab:active{transform:scale(.94)}
 .month{padding-bottom:calc(var(--navh) + 2px)}
 
@@ -324,6 +336,7 @@ input[type=date].inp{color-scheme:dark;min-width:0}
 .nchip small{font-size:calc(10.5px*var(--fz,1))}
 .tmemo{font-size:calc(14px*var(--fz,1));color:#BFA987;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2}
 .tai{font-size:calc(11px*var(--fz,1));color:#A9D57E;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-top:1px}
+.tai.rule{color:#9C8A70}
 .tai.fresh{animation:inkFade .8s ease both}
 .anbtn{color:var(--goldM)}
 .anstat{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
@@ -331,6 +344,9 @@ input[type=date].inp{color-scheme:dark;min-width:0}
 .anstat b{font-family:'Nanum Myeongjo',serif;font-size:calc(19px*var(--fz,1));color:var(--goldL)}
 .anstat span{font-size:calc(10.5px*var(--fz,1));color:var(--mut)}
 .aibox{background:linear-gradient(180deg,#17200F,#0F140A);border:1px solid #3E5A2A;border-radius:16px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.aibox.rule{background:var(--card);border-color:var(--line)}
+.aibox.rule .aih>span{color:var(--goldM)}
+.aibox.rule p{color:var(--ink)}
 .aih{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .aih>span{display:inline-flex;align-items:center;gap:6px;color:#A9D57E;font-size:calc(12px*var(--fz,1));font-weight:700}
 .aibox p{margin:0;color:#DCE9C8;font-size:calc(13px*var(--fz,1));line-height:1.6}
@@ -341,9 +357,11 @@ input[type=date].inp{color-scheme:dark;min-width:0}
 .anl span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:calc(13px*var(--fz,1))}
 .anl b{font-size:calc(13px*var(--fz,1));color:var(--goldL);font-weight:500;white-space:nowrap}
 .anl em{font-style:normal;font-size:calc(10.5px*var(--fz,1));width:40px;text-align:right;color:var(--dim);white-space:nowrap}
-.anl em.up{color:#A9D57E}.anl em.dn{color:var(--sun)}
+.anl em.up{color:var(--goldL)}.anl em.dn{color:var(--sun)}
 .anbar{height:5px;border-radius:3px;background:#1E150F;overflow:hidden}
 .anbar i{display:block;height:100%;border-radius:3px;opacity:.85}
+/* PC·태블릿 가로 등 넓은 화면: 앱을 가운데 기둥(최대 480px)으로. 시트·알림·표지도 body 안 absolute라 같이 맞춰짐 */
+@media (min-width:700px){html{background:#030202}body{max-width:480px;margin:0 auto;border-left:1px solid var(--line2);border-right:1px solid var(--line2);box-shadow:0 0 60px rgba(0,0,0,.8)}}
 @media (max-width:370px){header{padding-left:12px;padding-right:10px;gap:6px}.hright{gap:2px}.navarrow{width:30px}.seg button{min-width:38px}.titlebox small{letter-spacing:2px}}
 #cover{position:absolute;inset:0;z-index:9999;perspective:1600px;pointer-events:auto;background:transparent}
 #cover .cv{position:absolute;inset:0;background:#0D0907 radial-gradient(ellipse at 45% 38%,#2A1C12 0%,#120C08 55%,#080504 100%);transform-origin:0 50%;will-change:transform,opacity;box-shadow:12px 0 40px rgba(0,0,0,.7)}

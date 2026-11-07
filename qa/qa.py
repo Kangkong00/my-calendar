@@ -91,6 +91,41 @@ async def run():
             await pg.click('#vWeek'); await pg.wait_for_timeout(600); await shot('주간_헤더'); await pg.click('#vMonth'); await pg.wait_for_timeout(500)
             report[f'{W}x{H} 스크립트 오류'] = errs
             await ctx.close()
+        # 2-1) 아이폰 홈 화면 앱 재현: iOS처럼 창 높이를 상태바만큼 짧게(797) 알려 주고 화면은 844, 안전영역 47/34
+        for (W, H, short, top, bot) in [(390, 844, 47, 47, 34), (320, 693, 20, 20, 0), (430, 932, 59, 59, 34)]:
+            ctx = await b.new_context(viewport={'width': W, 'height': H - short}, screen={'width': W, 'height': H}, device_scale_factor=2, has_touch=True)
+            await ctx.add_init_script("Object.defineProperty(navigator,'standalone',{get:()=>true});(function(){const set=()=>{const d=document.documentElement;d.style.setProperty('--qa-sat-top','%dpx');d.style.setProperty('--qa-sat-bot','%dpx')};if(document.documentElement)set();else new MutationObserver((m,o)=>{if(document.documentElement){o.disconnect();set()}}).observe(document,{childList:true})})()" % (top, bot))
+            pg = await ctx.new_page(); errs = []
+            pg.on('pageerror', lambda e: errs.append(str(e)))
+            await pg.route('**/version.json*', lambda r: r.fulfill(status=404, body=''))
+            await pg.goto(URL); await pg.evaluate('localStorage.clear()'); await pg.reload(); await pg.wait_for_selector('#cover', state='detached', timeout=5000)
+            await pg.set_viewport_size({'width': W, 'height': H}); await pg.wait_for_timeout(400)  # 실제로 그려지는 화면 크기로 측정
+            m = await pg.evaluate("""() => { const n = document.querySelector('nav').getBoundingClientRect(), f = document.querySelector('#nAdd').getBoundingClientRect(), a = document.querySelector('#app').getBoundingClientRect(); return { app: a.height, navB: n.bottom, navH: n.height, below: n.bottom - f.bottom, fit: document.documentElement.getAttribute('data-fit') }; }""")
+            iss = []
+            if abs(m['app'] - H) > 1: iss.append(f"앱 높이 {m['app']} ≠ 화면 {H} (맞춤: {m['fit']})")
+            if abs(m['navB'] - H) > 1: iss.append(f"하단 바 끝 {m['navB']} ≠ 화면 끝 {H}")
+            if bot and not (14 <= m['below'] <= 30): iss.append(f"+ 버튼 아래 여백 {m['below']:.0f}px (14~30 기대)")
+            await pg.screenshot(path=f'{OUT}/홈화면앱_{W}x{H}_월간.png')
+            await pg.click('#nAdd'); await pg.wait_for_timeout(600)
+            sb = await pg.evaluate("() => document.querySelector('.sheet').getBoundingClientRect().bottom")
+            if abs(sb - H) > 1: iss.append(f'시트 아래 끝 {sb} ≠ {H}')
+            await pg.screenshot(path=f'{OUT}/홈화면앱_{W}x{H}_새일정.png')
+            report[f'홈 화면 앱 {W}x{H}'] = iss + errs
+            await ctx.close()
+        # PC 넓은 화면: 가운데 기둥, 가로 스크롤 없음
+        ctx = await b.new_context(viewport={'width': 1280, 'height': 800})
+        pg = await ctx.new_page(); errs = []
+        pg.on('pageerror', lambda e: errs.append(str(e)))
+        await pg.route('**/version.json*', lambda r: r.fulfill(status=404, body=''))
+        await pg.goto(URL); await pg.wait_for_selector('#cover', state='detached', timeout=5000); await pg.wait_for_timeout(300)
+        res = await pg.evaluate(CHECK)
+        w = await pg.evaluate("() => document.querySelector('#app').getBoundingClientRect().width")
+        if w > 481: res.append(f'PC에서 앱 폭 {w}px (480 이하 기대)')
+        await pg.screenshot(path=f'{OUT}/PC_1280x800_월간.png')
+        await pg.click('#nAdd'); await pg.wait_for_timeout(600); res += await pg.evaluate(CHECK)
+        await pg.screenshot(path=f'{OUT}/PC_1280x800_새일정.png')
+        report['PC 1280x800'] = res + errs
+        await ctx.close()
         await b.close()
     bad = {k: v for k, v in report.items() if v}
     print(json.dumps(bad, ensure_ascii=False, indent=1) if bad else '검수 통과: 문제 없음')

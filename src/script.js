@@ -1,6 +1,6 @@
 <script>
 'use strict';
-const APP_V = '3.15';
+const APP_V = '3.16';
 /* ========== 기본 도구 ========== */
 const $ = s => document.querySelector(s);
 const pad = n => String(n).padStart(2, '0');
@@ -583,7 +583,7 @@ function drawTasks() {
   const tot = tdy.length, dn = tdy.filter(x => x.done).length, pct = tot ? Math.round(dn / tot * 100) : 0;
   const dl = s => { const d = pymd(s); return koD(d); };
   const row = (x, kind) => { const lt = !x.done && x.due && x.due < today; const meta = [lt ? dl(x.due) + ' 까지였음' : '', kind === 'up' ? dl(x.due) : '', subs(x.id) ? '하위 ' + subs(x.id) + '개' : ''].filter(Boolean).join(' · '); const memo = plainNote(x.notes).split('\n').find(l => l.trim()) || '', tip = tipFor(x);
-    return '<div class="trow' + (x.done ? ' done' : '') + (lt ? ' late' : '') + '" data-tid="' + esc(x.id) + '"><i class="shine"></i>' + ckHTML(x.title + ' 완료', 'data-tk="' + esc(x.id) + '"' + (x.done ? ' checked' : '')) + '<div class="tmain"><span class="ttl">' + esc(x.title) + '<i class="strike"></i></span>' + (meta ? '<span class="tmeta">' + esc(meta) + '</span>' : '') + (memo ? '<span class="tmemo" style="font-family:' + NF(S.noteFont || 'pen')[2] + '">' + esc(memo) + '</span>' : '') + (tip ? '<span class="tai">' + esc(tip) + '</span>' : '') + '</div>' + (lt ? '<button class="tside" data-tt="' + esc(x.id) + '">오늘로</button>' : '') + '</div>'; };
+    return '<div class="trow' + (x.done ? ' done' : '') + (lt ? ' late' : '') + '" data-tid="' + esc(x.id) + '"><i class="shine"></i>' + ckHTML(x.title + ' 완료', 'data-tk="' + esc(x.id) + '"' + (x.done ? ' checked' : '')) + '<div class="tmain"><span class="ttl">' + esc(x.title) + '<i class="strike"></i></span>' + (meta ? '<span class="tmeta">' + esc(meta) + '</span>' : '') + (memo ? '<span class="tmemo" style="font-family:' + NF(S.noteFont || 'pen')[2] + '">' + esc(memo) + '</span>' : '') + (tip ? '<span class="tai' + (tip.ai ? '' : ' rule') + '">' + esc(tip.t) + '</span>' : '') + '</div>' + (lt ? '<button class="tside" data-tt="' + esc(x.id) + '">오늘로</button>' : '') + '</div>'; };
   const grp = (title, cls, items, kind, extra) => '<div class="tgroup"><div class="tgh"><h3 class="serif ' + cls + '">' + title + '<small>' + items.length + '개</small></h3>' + (extra || '') + '</div><div class="tlist">' + (items.length ? items.map(x => row(x, kind)).join('') : '<div class="note" style="padding:14px;text-align:center">비어 있어요</div>') + '</div></div>';
   const W = [['today', '오늘'], ['tomorrow', '내일'], ['nextmon', '다음 주 월'], ['none', '날짜 없음']];
   let h = '<div class="scroller" id="tscroll"><div class="prog"><div class="t"><span>오늘 ' + dn + ' / ' + tot + ' 완료</span><span>' + pct + '%</span></div><div class="b"><i style="width:' + pct + '%"></i></div></div>'
@@ -878,6 +878,16 @@ async function gemini(prompt, maxTok) {
   throw new Error(last || '연결 실패');
 }
 
+/* --- 화면 진단 줄 (설정 맨 아래). 실제 기기 문제를 스크린샷 한 장으로 알 수 있게 --- */
+function diagLine() {
+  const d = document.documentElement, cs = getComputedStyle(d), a = $('#app'), n = $('nav');
+  const px = v => Math.round(parseFloat(v) || 0);
+  const pr = document.createElement('i'); pr.style.cssText = 'position:absolute;visibility:hidden;padding-top:var(--sat-top);padding-bottom:var(--sat-bot)'; d.appendChild(pr);
+  const ps = getComputedStyle(pr), sat = px(ps.paddingTop), sab = px(ps.paddingBottom); pr.remove();
+  return '화면 ' + screen.width + '×' + screen.height + ' · 창 ' + innerWidth + '×' + innerHeight + ' · 앱 ' + (a ? Math.round(a.getBoundingClientRect().height) : 0) + ' · 하단 바 ' + (n ? Math.round(n.getBoundingClientRect().height) : 0)
+    + ' · 안전영역 ' + sat + '/' + sab + ' · 맞춤 ' + (d.getAttribute('data-fit') || '-') + ' · 홈 화면 앱 ' + ((navigator.standalone || matchMedia('(display-mode: standalone)').matches) ? '예' : '아니오') + ' · v' + APP_V;
+}
+
 /* --- 예비 코치: 키가 없거나 연결이 안 될 때 --- */
 const TIP_RULES = [
   [/독서|책|읽기|독후감/, ['책을 먼저 펴야 다음이 시작돼요. 10쪽만 읽어 봐요.', '오늘은 딱 한 챕터만, 지금 펴 볼까요?']],
@@ -901,9 +911,9 @@ const tipKey = x => hsh((x.title || '') + '\n' + plainNote(x.notes || ''));
 function tipFor(x) {
   if (S.aiTip === false || x.done) return '';
   const c = aiStore().tips[tipKey(x)];
-  if (c && (c.src === 'ai' || !aiOn())) return c.t;
+  if (c && c.src === 'ai') return { t: c.t, ai: true };
   if (aiOn()) aiQueue(x);
-  return c ? c.t : ruleTip(x);
+  return { t: ruleTip(x), ai: false };
 }
 function aiQueue(x) { const k = tipKey(x); if (AI.q.some(q => q.k === k)) return; AI.q.push({ k, x }); aiPump(); }
 async function aiPump() {
@@ -916,7 +926,7 @@ async function aiPump() {
     let t = await gemini('[할 일 한 줄 메시지]\n제목: ' + x.title + '\n메모: ' + (memo || '(없음)') + '\n마감: ' + (x.due || '없음') + '\n\n규칙대로 한 문장만 답하세요.', 200);
     t = t.split('\n').map(s => s.trim()).filter(Boolean)[0] || '';
     t = t.replace(/^["'“”‘’\-•\s]+|["'“”‘’\s]+$/g, '').slice(0, 60);
-    if (t) { aiStore().tips[k] = { t, src: 'ai' }; aiSave(); document.querySelectorAll('.trow[data-tid="' + CSS.escape(x.id) + '"] .tai').forEach(el => { el.textContent = t; el.classList.add('fresh'); }); }
+    if (t) { aiStore().tips[k] = { t, src: 'ai' }; aiSave(); document.querySelectorAll('.trow[data-tid="' + CSS.escape(x.id) + '"] .tai').forEach(el => { el.textContent = t; el.classList.remove('rule'); el.classList.add('fresh'); }); }
   } catch (e) { if (/키/.test(e.message)) AI.q = []; }
   AI.busy = false;
   setTimeout(aiPump, 4500); // 무료 등급 분당 요청 한도 안쪽으로
@@ -975,7 +985,7 @@ async function openAnalysis(kind0) {
     let h = '<div class="row" style="gap:8px">' + [['week', '주간'], ['month', '월간']].map(z => '<button class="nchip' + (kind === z[0] ? ' on' : '') + '" data-a="kind" data-v="' + z[0] + '" style="flex:1;justify-content:center">' + z[1] + '</button>').join('') + '</div>'
       + '<div class="row" style="justify-content:space-between;align-items:center"><button class="navarrow" data-a="prev" aria-label="이전 기간">' + ICON.chevL + '</button><b class="serif goldtext" style="font-size:calc(15px*var(--fz,1))">' + esc(p.label) + '</b><button class="navarrow" data-a="next" aria-label="다음 기간"' + (off >= 0 ? ' disabled style="opacity:.3"' : '') + '>' + ICON.chev + '</button></div>'
       + '<div class="anstat"><div><b>' + cur.n + '</b><span>일정</span></div><div><b>' + r1(tot) + '</b><span>기록된 시간</span></div><div><b>' + (cur.tasks ? cur.done + '/' + cur.tasks : '–') + '</b><span>할 일 완료</span></div></div>'
-      + '<section class="aibox"><div class="aih"><span>' + ICON.spark + (src === 'ai' ? 'AI 코치' : '코치 메모') + '</span>' + (aiOn() ? '<button class="nchip" data-a="ai"' + (busy ? ' disabled' : '') + '>' + (busy ? '분석 중…' : src === 'ai' ? '다시 분석' : 'AI로 분석') + '</button>' : '') + '</div><p>' + esc(txt) + '</p>' + (aiOn() ? '' : '<p class="note" style="margin:0">설정에서 Gemini 키를 넣으면 AI가 직접 분석해 줘요.</p>') + '</section>'
+      + '<section class="aibox' + (src === 'ai' ? '' : ' rule') + '"><div class="aih"><span>' + ICON.spark + (src === 'ai' ? 'AI 코치' : '코치 메모') + '</span>' + (aiOn() ? '<button class="nchip" data-a="ai"' + (busy ? ' disabled' : '') + '>' + (busy ? '분석 중…' : src === 'ai' ? '다시 분석' : 'AI로 분석') + '</button>' : '') + '</div><p>' + esc(txt) + '</p>' + (aiOn() ? '' : '<p class="note" style="margin:0">설정에서 Gemini 키를 넣으면 AI가 직접 분석해 줘요.</p>') + '</section>'
       + '<div class="box">' + (rows.length ? rows.map(r => { const pv = (prev.by[r.k] || {}).h || 0, d = r.h - pv; return '<div class="anrow"><div class="anl"><i style="background:' + r.color + '"></i><span>' + esc(r.name) + '</span><b>' + (r.h ? r1(r.h) + '시간' : r.allDay + '일 종일') + '</b>' + (r.h || pv ? '<em class="' + (d > 0 ? 'up' : d < 0 ? 'dn' : '') + '">' + (Math.abs(d) < 0.05 ? '–' : (d > 0 ? '▲' : '▼') + r1(Math.abs(d))) + '</em>' : '<em></em>') + '</div><div class="anbar"><i style="width:' + Math.max(2, r.h / max * 100) + '%;background:' + r.color + '"></i></div></div>'; }).join('') : '<div class="note" style="padding:14px;text-align:center">이 기간 일정이 없어요</div>') + '</div>'
       + '<p class="note">▲▼는 바로 전 ' + (kind === 'week' ? '주' : '달') + '와 비교한 시간입니다. 종일 일정은 시간에서 빠지고 일수로 셉니다. AI에는 카테고리별 시간 합계만 보내고 일정 제목은 보내지 않아요.</p>';
     return h;
@@ -1008,14 +1018,14 @@ function openSettings() {
     + '<p class="note">주소와 키는 이 기기에만 저장됩니다. 비워 두면 예시 데이터로 보여 줍니다.</p>' + (demo() ? '' : '<button class="obtn" data-a="refresh" style="align-self:flex-start">캘린더 목록·색 새로 불러오기</button>'))
     + sec('월간 화면에서 숨길 캘린더', '<p class="note">숨겨도 주간과 하루 시간표에는 그대로 보입니다.</p><div class="box">' + st.cals.map(c => '<div class="boxrow"><i style="width:10px;height:10px;border-radius:5px;background:' + c.color + '"></i><span style="flex:1;font-size:calc(14px*var(--fz,1))">' + esc(c.name) + '</span><button class="switch' + (S.hiddenMonth.includes(c.id) ? '' : ' on') + '" role="switch" aria-checked="' + !S.hiddenMonth.includes(c.id) + '" aria-label="' + esc(c.name) + ' 월간 표시" data-a="hm" data-id="' + esc(c.id) + '"><i></i></button></div>').join('') + '</div>')
     + sec('표시', '<div class="box"><div class="boxrow" style="justify-content:space-between"><span style="font-size:calc(14px*var(--fz,1))">대괄호 태그 숨기기<br><span class="lab">[Golf]골프하자 → 골프하자</span></span><button class="switch' + (S.hideTags ? ' on' : '') + '" role="switch" aria-checked="' + S.hideTags + '" aria-label="대괄호 태그 숨기기" data-a="tags"><i></i></button></div><div class="boxrow" style="justify-content:space-between"><span style="font-size:calc(14px*var(--fz,1))">캘린더에 계획 막대 보기<br><span class="lab">간트의 장기 계획을 월간·주간에도 표시</span></span><button class="switch' + (S.showPlans ? ' on' : '') + '" role="switch" aria-checked="' + S.showPlans + '" aria-label="캘린더에 계획 막대 보기" data-a="plans"><i></i></button></div></div>')
-    + sec('AI 코치', '<div class="box"><div class="boxrow" style="justify-content:space-between"><span style="font-size:calc(14px*var(--fz,1))">할 일 한 줄 응원<br><span class="lab">할 일 아래 연두색 한 문장</span></span><button class="switch' + (S.aiTip !== false ? ' on' : '') + '" role="switch" aria-checked="' + (S.aiTip !== false) + '" aria-label="할 일 한 줄 응원" data-a="aitip"><i></i></button></div></div>'
+    + sec('AI 코치', '<div class="box"><div class="boxrow" style="justify-content:space-between"><span style="font-size:calc(14px*var(--fz,1))">할 일 한 줄 응원<br><span class="lab">연두색 = AI가 쓴 문장 · 옅은 갈색 = 앱 기본 문장(키 없음·연결 실패)</span></span><button class="switch' + (S.aiTip !== false ? ' on' : '') + '" role="switch" aria-checked="' + (S.aiTip !== false) + '" aria-label="할 일 한 줄 응원" data-a="aitip"><i></i></button></div></div>'
       + '<label style="display:flex;flex-direction:column;gap:6px"><span class="lab">Gemini API 키 (무료)</span><input class="inp" id="sAi" type="password" placeholder="복사한 키를 붙여 넣기" value="' + esc(S.aiKey || '') + '" autocomplete="off" autocapitalize="off" spellcheck="false"></label>'
       + '<div class="row"><button class="gbtn" data-a="aitest" style="flex:1;height:46px">' + (S.aiKey ? '키 저장하고 다시 확인' : '키 저장하고 확인') + '</button>' + (S.aiKey ? '<button class="obtn" data-a="aioff" style="height:46px">키 지우기</button>' : '') + '</div>'
       + '<p class="note">' + (S.aiKey ? 'AI 연결됨' + (S.aiModel ? ' · ' + esc(S.aiModel) : '') + '. ' : '키가 없으면 앱에 들어 있는 예비 코치가 대신 답해요. ') + '키는 이 기기에만 저장됩니다. 무료 등급은 보낸 내용이 구글 서비스 개선에 쓰일 수 있어서, 할 일은 제목·메모만, 분석은 카테고리별 시간 합계만 보냅니다. 키 받는 곳: aistudio.google.com/apikey</p>')
     + sec('글자 크기', '<div class="row" style="gap:8px">' + [[0.92, '작게'], [1, '보통'], [1.1, '크게']].map(z => '<button class="nchip' + ((S.fz || 1) === z[0] ? ' on' : '') + '" data-a="fz" data-v="' + z[0] + '" style="flex:1;justify-content:center">' + z[1] + '</button>').join('') + '</div><p class="note">앱 전체 글자에 적용됩니다. 메모장 글씨는 메모 화면에서 따로 조절합니다.</p>')
-    + '<p class="note">화면 ' + screen.width + '×' + screen.height + ' · 앱 ' + innerWidth + '×' + innerHeight + ' · 보정 ' + (getComputedStyle(document.documentElement).getPropertyValue('--gap').trim() || '0px') + ' · 홈 화면 앱 ' + ((navigator.standalone || matchMedia('(display-mode: standalone)').matches) ? '예' : '아니오') + '</p>'
+    + '<p class="note">' + diagLine() + '</p>'
     + '<div class="box"><div class="boxrow" style="justify-content:space-between"><span style="font-size:calc(14px*var(--fz,1))">화면 아래 끝까지 채우기<br><span class="lab">아래가 잘려 보이면 끄세요</span></span><button class="switch' + (!S.noGap ? ' on' : '') + '" role="switch" aria-checked="' + !S.noGap + '" aria-label="화면 아래 끝까지 채우기" data-a="gapfix"><i></i></button></div></div>'
-    + '<p class="note">화면 버전 ' + APP_V + ' · 데이터 창구 v' + (S.sv || '?') + ' · 테마 다크 레더 · 테마 바꾸기와 PC 넓은 배치는 다음 단계에서 열립니다.</p>';
+    + '<p class="note">화면 버전 ' + APP_V + ' · 데이터 창구 v' + (S.sv || '?') + ' · 테마 다크 레더 · PC는 가운데 기둥 배치이며, 테마 바꾸기와 PC 넓은 배치는 다음 단계에서 열립니다.</p>';
   let sh;
   const redraw = () => { const b = sh.querySelector('.sbody'), y = b.scrollTop; b.innerHTML = body(); b.scrollTop = y; };
   const reset = () => { M.months = {}; M.ts = {}; T.lists = null; T.tasks = []; T.ts = 0; G.phases = null; G.ts = 0; loadLocal(); const tc = store.get('tasks'); if (tc) { T.lists = tc.lists; T.tasks = tc.tasks; } G.phases = store.get('gantt'); };
@@ -1032,7 +1042,7 @@ function openSettings() {
       catch (err) { S.aiKey = old; toast('연결 실패: ' + err.message); t.disabled = false; t.textContent = '키 저장하고 확인'; }
     }
     if (a === 'gapfix') { S.noGap = !S.noGap; save(); location.reload(); return; }
-    if (a === 'fz') { S.fz = +t.dataset.v; save(); document.documentElement.style.setProperty('--fz', S.fz); redraw(); render(); }
+    if (a === 'fz') { S.fz = +t.dataset.v; save(); document.documentElement.style.setProperty('--fzu', S.fz); redraw(); render(); }
     if (a === 'tags') { S.hideTags = !S.hideTags; save(); redraw(); render(); }
     if (a === 'plans') { S.showPlans = !S.showPlans; save(); redraw(); render(); }
     if (a === 'refresh') { try { const r = await api('calendars', { fresh: '1' }); setCals(r.calendars); M.months = {}; M.ts = {}; toast('새로 불러왔습니다'); redraw(); render(); } catch (err) { toast(err.message); } }
