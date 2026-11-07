@@ -1,0 +1,85 @@
+# 나의 캘린더 (My Calendar) — 유지보수 인수인계
+
+> 클로드 코드는 이 파일을 자동으로 읽는다. 작업 전 끝까지 읽을 것.
+
+## 0. 사용자와 일하는 규칙 (반드시)
+- 사용자: 강콩. 모든 답변은 **한국어 존댓말**, 결론 먼저, 군더더기 없이. 영어 초급 → 쉬운 말로.
+- **사용자는 판단·최종 확인만 한다. 코드·배포는 전부 클로드가 한다.** ("다 승인해줄게 너가 해")
+- **모든 수정은 스스로 검수 후 전달** (기능·디자인·겹침·잘림·넘침). 규칙: `qa/QA.md`. 사람이 검수 안 해도 믿고 맡길 수준이 목표.
+- 직접 확인 못 한 것은 보고에 **"확인 필요"**로 구분 (실제 아이폰 화면, 실제 구글/Gemini 서버 응답 등).
+- 동의만 하지 말고 솔직하게 평가·반대 의견을 낸다. 답변 끝에 이어서 물어볼 질문 1개.
+
+## 1. 무엇인가
+- 구글 캘린더 + 구글 Tasks 기반 개인 일정 앱(PWA). 주 사용 기기 **아이폰(홈 화면 앱, 390×844)**. PC 넓은 배치는 아직 미착수.
+- 화면 주소: https://kangkong00.github.io/my-calendar/ (GitHub Pages, `main` 브랜치 루트)
+- 저장소: https://github.com/Kangkong00/my-calendar
+
+## 2. 파일 구조
+| 경로 | 내용 |
+|---|---|
+| `src/head.html` | HTML 머리·CSS 전부 + `<body>` 마크업 (원본) |
+| `src/script.js` | 앱 JS 전부, `<script>…</script></body></html>`로 끝남 (원본) |
+| `index.html` | **배포본 = head.html + script.js** (`./build.sh`로 생성. 직접 고치지 말 것) |
+| `version.json` | `{"v":"3.14"}` — 앱이 열릴 때 no-store로 읽어 다르면 자동 새로고침 |
+| `coach.md` | AI 코치 설명서(말투·규칙). 앱이 읽어 Gemini 시스템 지시문으로 보냄. 고치면 바로 반영 |
+| `apps-script/Code.gs`, `appsscript.json` | 백엔드(구글 앱스 스크립트 웹앱 v3). 사용자 구글 계정에 배포돼 있음 |
+| `qa/qa.py`, `qa/QA.md` | 자동 검수 도구(Playwright)와 검수 규칙 |
+| `splash/*.png`, `splash/cover*.jpg` | iOS 시작 화면 11종 + 앱 안 표지 이미지 |
+| `tools/cover.html` | 표지 원본 디자인 (글꼴: npm `@fontsource/unifrakturmaguntia`, 경로는 로컬에 맞게 수정) |
+| `manifest.json`, `icon-*.png`, `icon.svg` | PWA 설정·아이콘(A안 가죽 다이어리) |
+| `README.md` | 사용자용 설치·백엔드 업데이트 안내 |
+
+## 3. 작업 순서 (매번)
+1. `src/head.html`, `src/script.js` 수정
+2. 버전 올리기: `src/script.js`의 `const APP_V = 'x.y'`와 `version.json`을 **같은 값으로**
+3. `./build.sh` → index.html 생성 + 버전 일치·문법 검사
+4. 로컬 서버: 저장소 루트에서 `python3 -m http.server 8765`
+5. 검수: `QA_OUT=/tmp/qa python3 qa/qa.py http://localhost:8765/index.html` → "검수 통과" + 스크린샷 눈으로 확인
+6. 커밋·푸시: `git push origin HEAD:main` (Pages가 1~2분 뒤 반영, 폰은 자동 업데이트)
+- 필요 도구: Python Playwright + Chrome(`/usr/bin/google-chrome` — 다르면 qa.py에서 경로 수정), Node(문법 검사)
+
+## 4. 구조 핵심
+- **백엔드(Code.gs)**: executeAs ME, 접근 ANYONE_ANONYMOUS, 스크립트 속성 `API_KEY`로 보호. `UrlFetchApp.fetchAll` 병렬, Calendar v3·Tasks v1 고급 서비스.
+  - `batch` 중계: Calendar/Tasks API 요청을 최대 50개씩 그대로 전달 → **화면 쪽만 고쳐도 대부분 기능 추가 가능. 백엔드 수정은 사용자가 PC에서 붙여넣기+재배포해야 하므로 최대한 피할 것.**
+- 앱 설정: localStorage `cal.settings`(S 객체: url, key, view, tab, hideTags, showPlans, hiddenMonth, noteFont, noteSize, fz, aiKey, aiModel, aiTip, noGap 등). 비어 있으면 **예시 데이터 모드**(Demo).
+- 일정 캐시: 월별 `cal.c.months`(예시 모드는 `cal.c.demo.` 접두). stale-while-revalidate, 인접 달 미리 받기, 새 일정은 즉시 캐시에 추가.
+- `normal()`: `bar = 종일 || 24시간 이상` (수면처럼 자정 넘는 일정이 종일로 보이던 버그 수정분).
+- 간트 단계 = 종일 일정 + `extendedProperties.private {gantt:'1', proj, pname, group, idx, phase, done}`.
+- 할 일 메모 서식은 Tasks notes에 표식으로 저장: `**굵게**`, `__밑줄__`, `[[금:글자]]`(잉크색).
+- 이벤트·카테고리 색은 **구글 캘린더 색과 정확히 일치**해야 함 (EVC 표).
+
+## 5. 디자인 규칙 (사용자 확정)
+- 테마: 다크 레더 v3 (아주 짙은 에스프레소 + 금박 그라데이션). 표지는 블랙레터 "My Calendar".
+- 월간: 종일은 글자 막대, 시간 일정은 색 칩만. 날짜 탭 → 하루 시간표. 주간: 0~24시 한 화면, 대괄호 태그 표시.
+- 시간 선택: 30분 칩 + ±5/±10 미세 조정, 종료는 시각/기간 선택. 알림 기본 꺼짐.
+- 일정 복제(어제 기본, 지난주 같은 요일, 지난달 같은 날, 날짜 선택). 일정·할 일·계획 수정/삭제.
+- 메모: 아날로그 공책(손글씨 글꼴 8종, 크기, 굵게·밑줄·잉크색).
+- 탭 전환 책장 넘김, 주간은 문서처럼 올라옴. 실행 시 가죽 표지 1초 유지 → 1초간 열림.
+- 글자: 6단계 체계, `font-size: calc(Npx*var(--fz,1))` 형식 유지(설정 작게 0.92/보통 1/크게 1.1). **입력칸은 16px 고정**(아이폰 자동 확대 방지).
+- 새 카테고리 만들기는 앱에서, 캘린더 삭제·공유는 구글에서.
+
+## 6. AI 코치 (v3.12~)
+- **완전 무료 조건** → 구글 Gemini 무료 등급(사용자가 AI Studio에서 키 발급·앱 설정에 입력 완료, 결제 미연결).
+- 앱 → Gemini 직접 호출(키는 기기 localStorage에만). 모델 순서 `gemini-flash-lite-latest → gemini-2.5-flash-lite → …`, 성공 모델을 `S.aiModel`에 기억. 429면 1분 쉼, 요청 간격 4.5초.
+- 기능: ① 할 일 아래 연두색 한 줄 응원(제목+메모 해시로 캐시 `cal.ai`) ② 주간·월간 분석(헤더 막대그래프 아이콘) — **숫자는 앱이 계산, AI는 문장 3개만**.
+- 개인정보: 무료 등급은 구글이 학습에 쓸 수 있음 → 할 일은 제목·메모만, 분석은 카테고리별 시간 합계만 보냄(일정 제목·동료 이름 금지). 이 원칙 유지.
+- 키 없거나 실패 시 앱 내장 **예비 코치**(TIP_RULES, ruleAnalysis)가 대신 답함.
+- **버린 선택지 (다시 논의하지 않기)**
+  - 클로드 API: 품질은 선호하나 **무료 등급 없음** → 탈락 (사용자 조건: 완전 무료)
+  - 폰 안에서 AI 직접 실행(WebLLM 등): 1B 모델도 약 700MB, 한국어 품질 낮음, 느림 → 탈락
+  - Gemini 유료 등급: 무료 조건 위배 → 탈락
+  - 백엔드 경유 호출: 사용자 수동 재배포 필요 → 직접 호출로 대체
+
+## 7. 아이폰 홈 화면 앱 특이사항 (중요)
+- iOS가 앱 높이를 상태바만큼(47px) 짧게 알려줘서 아래에 빈 띠가 생김 → `--gap` 보정(head의 인라인 스크립트).
+- `position:fixed`는 iOS가 짧은 높이에서 잘라냄 → **#app·.dim·.sheet·.toast·#cover는 `position:absolute`**, `html{height:calc(100% + var(--gap))}`, `body{position:relative}`. 새 오버레이도 fixed 금지.
+- 입력칸 포커스로 문서가 밀리면 포커스 해제 시 `scrollTo(0,0)`.
+- 설정 맨 아래 진단 줄: `화면 W×H · 앱 W×H · 보정 Npx · 홈 화면 앱 예/아니오`. 문제 시 "화면 아래 끝까지 채우기" 스위치(S.noGap)로 끌 수 있음.
+- 사용자가 '화면 확대' 모드일 가능성 → 320px 폭도 검수 대상.
+
+## 8. 남은 일 / 확인 필요
+- [확인 필요] v3.14 화면 끝까지 채우기가 실제 아이폰에서 + 버튼·시트 잘림 없이 보이는지 (사용자 스크린샷 대기)
+- [확인 필요] 실제 Gemini 응답 품질·속도, 무료 한도 체감
+- [확인 필요] 실제 구글 API에서 종일↔시간 일정 전환 수정, 할 일 마감 지우기
+- [확인 필요] 손글씨 글꼴 실제 표시(테스트 환경에서 차단됨), iOS 시작 화면 이미지 지원 여부
+- 예정: PC 넓은 배치, 테마 바꾸기, 노션 연동 검토
