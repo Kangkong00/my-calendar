@@ -6,7 +6,7 @@ from playwright.async_api import async_playwright
 
 URL = sys.argv[1] if len(sys.argv) > 1 else 'http://localhost:8765/index.html'
 OUT = os.environ.get('QA_OUT', '/tmp/qa')
-SIZES = [(375, 667), (390, 844), (430, 932)]
+SIZES = [(320, 693), (375, 667), (390, 844), (430, 932)]
 LONG = '\n'.join(f'{i}월 - 아주 긴 메모 줄 {i} 번째 내용입니다 pH Sensor 점검 및 필터 교체' for i in range(1, 31))
 
 CHECK = r"""

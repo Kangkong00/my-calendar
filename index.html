@@ -27,6 +27,7 @@
 <link rel="apple-touch-startup-image" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="splash/750x1334.png?v=2">
 <link rel="preload" as="image" href="splash/cover.jpg?v=2" fetchpriority="high">
 <link rel="stylesheet" media="print" onload="this.media='all'" href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700;800&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<script>(function(){var d=document.documentElement,g=0;function f(){var s=screen,p=innerHeight>=innerWidth,h=p?Math.max(s.width,s.height):Math.min(s.width,s.height),x=h-innerHeight;if(!navigator.standalone)x=0;if(x>=0&&x<=80){g=x;d.style.setProperty('--gap',g+'px')}}f();addEventListener('resize',f);addEventListener('orientationchange',function(){setTimeout(f,300)});try{var z=JSON.parse(localStorage.getItem('cal.settings')||'{}').fz;if(z)d.style.setProperty('--fz',z)}catch(e){}})()</script>
 <style>
 :root{
   --bg:#070504; --ink:#EFE3CF; --mut:#A89275; --dim:#7F6B55; --line:#3A2A1E; --line2:#241911; --line3:#1E150F;
@@ -44,7 +45,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family
 button,input,select,textarea{font-family:inherit;color:inherit}
 button{cursor:pointer}
 input::placeholder,textarea::placeholder{color:#8F7A62}
-#app{position:fixed;inset:0;display:flex;flex-direction:column;overflow:hidden;perspective:1800px;
+#app{position:fixed;inset:0 0 calc(-1*var(--gap,0px)) 0;display:flex;flex-direction:column;overflow:hidden;perspective:1800px;
   background:radial-gradient(120% 45% at 50% 0%,#2A1C13 0%,#0E0907 55%,#070504 100%)}
 .serif{font-family:'Nanum Myeongjo',serif;font-weight:800}
 .goldtext{background:var(--gold);-webkit-background-clip:text;background-clip:text;color:transparent}
@@ -52,18 +53,18 @@ input::placeholder,textarea::placeholder{color:#8F7A62}
 /* header */
 header{padding:calc(var(--sat-top) + 14px) 14px 6px;display:flex;align-items:flex-end;justify-content:space-between;gap:10px}
 .titlebox{display:flex;flex-direction:column;gap:1px;border:none;background:none;padding:0;text-align:left}
-.titlebox small{font-size:11px;color:var(--mut);letter-spacing:4px}
-.titlebox h1{margin:0;font-size:30px;line-height:1.1;letter-spacing:2px}
+.titlebox small{font-size:calc(10.5px*var(--fz,1));color:var(--mut);letter-spacing:4px}
+.titlebox h1{margin:0;font-size:calc(26px*var(--fz,1));line-height:1.1;letter-spacing:2px}
 .hright{display:flex;align-items:center;gap:6px}
 .navarrow{width:36px;height:40px;border:none;background:transparent;color:var(--mut);display:flex;align-items:center;justify-content:center}
 .seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:2px;padding:3px;border-radius:12px;background:#0A0705;border:1px solid var(--line)}
-.seg button{height:34px;min-width:44px;border:none;border-radius:9px;background:transparent;color:var(--mut);font-size:14px}
+.seg button{height:34px;min-width:44px;border:none;border-radius:9px;background:transparent;color:var(--mut);font-size:calc(13px*var(--fz,1))}
 .seg button.on{background:linear-gradient(180deg,#2E2016,#1E150F);box-shadow:inset 0 0 0 1px #6E5236;color:var(--goldL);font-weight:700}
 
 main{flex:1;min-height:0;display:flex;flex-direction:column;position:relative}
 
 /* month */
-.wdrow{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));text-align:center;font-size:11px;color:var(--mut);padding:4px 4px 4px;border-bottom:1px solid var(--line2)}
+.wdrow{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));text-align:center;font-size:calc(10.5px*var(--fz,1));color:var(--mut);padding:4px 4px 4px;border-bottom:1px solid var(--line2)}
 .wdrow span:first-child{color:var(--sun)} .wdrow span:last-child{color:var(--sat)}
 .month{flex:1;min-height:0;display:flex;flex-direction:column;padding:0 4px}
 .mweek{position:relative;flex:1;min-height:0;border-bottom:1px solid var(--line3)}
@@ -71,21 +72,21 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;position:relative}
 .mday{position:relative;border:none;border-right:1px solid var(--line3);background:transparent;padding:4px 0 0;display:flex;justify-content:center;align-items:flex-start}
 .mday:last-child{border-right:none}
 .mday.today{background:linear-gradient(180deg,rgba(201,164,106,.10),rgba(201,164,106,.02))}
-.mnum{width:22px;height:22px;line-height:22px;border-radius:11px;font-size:13px;text-align:center}
+.mnum{width:22px;height:22px;line-height:22px;border-radius:11px;font-size:calc(12px*var(--fz,1));text-align:center}
 .mday.today .mnum{background:var(--gold);color:var(--dark);font-weight:700}
 .mday.out .mnum{color:#4A3B30}
 .mday.sun .mnum{color:var(--sun)} .mday.sat .mnum{color:var(--sat)} .mday.hol .mnum{color:var(--sun)}
 .mday.today.sun .mnum,.mday.today.sat .mnum,.mday.today.hol .mnum{color:var(--dark)}
-.bar{position:absolute;pointer-events:none;height:17px;line-height:17px;padding:0 4px;border-radius:4px;font-size:10.5px;font-weight:500;white-space:nowrap;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.18)}
+.bar{position:absolute;pointer-events:none;height:17px;line-height:17px;padding:0 4px;border-radius:4px;font-size:calc(10px*var(--fz,1));font-weight:500;white-space:nowrap;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.18)}
 .bar.hol{background:transparent!important;box-shadow:none;color:var(--sun)!important;font-weight:400;padding:0 2px}
 .pills{position:absolute;left:3px;right:3px;display:flex;flex-wrap:wrap;gap:3px;justify-content:center;pointer-events:none}
 .pill{width:13px;height:6px;border-radius:3px;box-shadow:0 1px 2px rgba(0,0,0,.5)}
-.more{position:absolute;left:0;right:0;bottom:3px;text-align:center;font-size:10px;color:var(--mut);pointer-events:none}
+.more{position:absolute;left:0;right:0;bottom:3px;text-align:center;font-size:calc(9.5px*var(--fz,1));color:var(--mut);pointer-events:none}
 
 /* week */
 .wkhead{display:grid;grid-template-columns:34px repeat(7,minmax(0,1fr));padding:2px 6px 4px 0}
-.wkh{border:none;background:transparent;display:flex;flex-direction:column;align-items:center;gap:1px;padding:2px 0;color:var(--mut);font-size:11px}
-.wkh b{width:26px;height:26px;line-height:26px;border-radius:13px;font-size:14px;color:var(--ink)}
+.wkh{border:none;background:transparent;display:flex;flex-direction:column;align-items:center;gap:1px;padding:2px 0;color:var(--mut);font-size:calc(10.5px*var(--fz,1))}
+.wkh b{width:26px;height:26px;line-height:26px;border-radius:13px;font-size:calc(13px*var(--fz,1));color:var(--ink)}
 .wkh.today b{background:var(--gold);color:var(--dark)}
 .wkh.sun{color:var(--sun)} .wkh.sat{color:var(--sat)}
 .wkallday{position:relative;margin:0 6px 4px 34px}
@@ -95,38 +96,38 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;position:relative}
 .wkcol.today{background:linear-gradient(180deg,rgba(201,164,106,.10),rgba(201,164,106,.02))}
 .hl{position:absolute;left:34px;right:0;border-top:1px solid var(--line3);pointer-events:none}
 .hl.six{border-top-color:var(--line)}
-.hlab{position:absolute;left:0;width:30px;text-align:right;font-size:9.5px;color:#6E5A47;transform:translateY(-6px);pointer-events:none}
-.hlab.six{font-size:11px;font-weight:700;color:var(--goldM)}
-.blk{position:absolute;border:none;text-align:center;overflow:hidden;border-radius:5px;padding:3px 2px 2px;font-size:8.5px;font-weight:500;line-height:1.2;word-break:keep-all;overflow-wrap:anywhere;display:flex;flex-direction:column;justify-content:flex-start;align-items:center;letter-spacing:-.2px;box-shadow:0 2px 6px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.22)}
+.hlab{position:absolute;left:0;width:30px;text-align:right;font-size:calc(9px*var(--fz,1));color:#6E5A47;transform:translateY(-6px);pointer-events:none}
+.hlab.six{font-size:calc(10.5px*var(--fz,1));font-weight:700;color:var(--goldM)}
+.blk{position:absolute;border:none;text-align:center;overflow:hidden;border-radius:5px;padding:3px 2px 2px;font-size:calc(8.5px*var(--fz,1));font-weight:500;line-height:1.2;word-break:keep-all;overflow-wrap:anywhere;display:flex;flex-direction:column;justify-content:flex-start;align-items:center;letter-spacing:-.2px;box-shadow:0 2px 6px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.22)}
 .nowline{position:absolute;height:1.5px;background:linear-gradient(90deg,#E3C48E,rgba(227,196,142,.15));pointer-events:none;box-shadow:0 0 6px rgba(227,196,142,.6)}
 
 /* nav */
 nav{position:absolute;left:0;right:0;bottom:0;height:calc(70px + var(--sat-bot));padding:0 12px var(--sat-bot);display:flex;align-items:center;justify-content:space-around;background:linear-gradient(180deg,rgba(10,7,5,.75),#070504);border-top:1px solid var(--line2);z-index:5}
-nav button{min-width:58px;height:48px;border:none;background:transparent;color:var(--mut);font-size:11.5px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+nav button{min-width:58px;height:48px;border:none;background:transparent;color:var(--mut);font-size:calc(10.5px*var(--fz,1));display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
 nav button.on{color:var(--goldL);font-weight:700}
 nav .fab{width:54px;height:54px;min-width:54px;border-radius:27px;border:1px solid #F3DCA6;background:var(--gold);color:var(--dark);box-shadow:0 8px 20px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.5)}
 nav .fab:active{transform:scale(.94)}
 .month{padding-bottom:calc(72px + var(--sat-bot))}
 
 /* sheets */
-.dim{position:fixed;inset:0;background:rgba(3,2,1,.55);z-index:20;animation:fade .25s ease both}
-.sheet{position:fixed;left:0;right:0;bottom:0;max-height:92%;z-index:21;display:flex;flex-direction:column;border-radius:22px 22px 0 0;
+.dim{position:fixed;inset:0 0 calc(-1*var(--gap,0px)) 0;background:rgba(3,2,1,.55);z-index:20;animation:fade .25s ease both}
+.sheet{position:fixed;left:0;right:0;bottom:calc(-1*var(--gap,0px));max-height:92%;z-index:21;display:flex;flex-direction:column;border-radius:22px 22px 0 0;
   background:radial-gradient(120% 40% at 50% 0%,#2A1C13 0%,#120C09 45%,#0A0705 100%);border-top:1px solid #4A3626;box-shadow:0 -12px 30px rgba(0,0,0,.6),inset 0 1px 0 rgba(201,164,106,.25);animation:up .36s cubic-bezier(.2,.9,.2,1) both}
 .sheet.closing{animation:down .25s ease-in both} .dim.closing{animation:fadeout .25s ease both}
 .sheet .grab{align-self:center;width:40px;height:4px;border-radius:2px;background:#4A3626;margin-top:8px;flex-shrink:0}
 .shead{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 14px 10px;border-bottom:1px solid #2A1D15;flex-shrink:0}
-.shead h2{margin:0;font-size:18px;color:var(--goldL)}
+.shead h2{margin:0;font-size:calc(17px*var(--fz,1));color:var(--goldL)}
 .sbody{flex:1;min-height:0;overflow-y:auto;padding:14px 16px calc(24px + var(--sat-bot));display:flex;flex-direction:column;gap:18px;-webkit-overflow-scrolling:touch}
-.tbtn{min-width:52px;height:40px;border:none;background:transparent;color:var(--mut);font-size:15px}
-.gbtn{min-width:64px;height:40px;padding:0 16px;border-radius:20px;border:1px solid #F3DCA6;background:var(--gold);color:var(--dark);font-size:15px;font-weight:700;box-shadow:inset 0 1px 0 rgba(255,255,255,.35)}
+.tbtn{min-width:52px;height:40px;border:none;background:transparent;color:var(--mut);font-size:calc(14px*var(--fz,1))}
+.gbtn{min-width:64px;height:40px;padding:0 16px;border-radius:20px;border:1px solid #F3DCA6;background:var(--gold);color:var(--dark);font-size:calc(14px*var(--fz,1));font-weight:700;box-shadow:inset 0 1px 0 rgba(255,255,255,.35)}
 .gbtn[disabled]{opacity:.5}
-.obtn{height:40px;padding:0 14px;border-radius:20px;border:1px solid #4A3626;background:transparent;color:var(--ink);font-size:14px}
+.obtn{height:40px;padding:0 14px;border-radius:20px;border:1px solid #4A3626;background:transparent;color:var(--ink);font-size:calc(13px*var(--fz,1))}
 .ibtn{width:40px;height:40px;border-radius:20px;border:1px solid var(--line);background:transparent;color:var(--mut);display:flex;align-items:center;justify-content:center}
-.lab{font-size:12px;color:var(--mut)}
+.lab{font-size:calc(11px*var(--fz,1));color:var(--mut)}
 .row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .scrollx{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
 .scrollx::-webkit-scrollbar{display:none}
-.pillb{min-height:36px;padding:0 12px;border-radius:18px;font-size:13px;white-space:nowrap;flex-shrink:0;background:transparent;color:var(--ink);border:1px solid #4A3626}
+.pillb{min-height:36px;padding:0 12px;border-radius:18px;font-size:calc(12px*var(--fz,1));white-space:nowrap;flex-shrink:0;background:transparent;color:var(--ink);border:1px solid #4A3626}
 .pillb.on{background:var(--gold);color:var(--dark);border-color:#F3DCA6;font-weight:700}
 .pillb.dash{border-style:dashed;border-color:#8C6A47;color:var(--goldL)}
 .box{display:flex;flex-direction:column;border-radius:14px;background:var(--card);border:1px solid var(--line);box-shadow:inset 0 1px 0 rgba(227,196,142,.06)}
@@ -134,22 +135,22 @@ nav .fab:active{transform:scale(.94)}
 .boxrow:last-child{border-bottom:none}
 .inp{height:46px;border-radius:12px;border:1px solid var(--line);background:#120C09;padding:0 12px;font-size:16px;width:100%}
 textarea.inp{height:80px;padding:10px 12px;resize:none}
-.title-inp{height:50px;border:none;border-bottom:1px solid #6E5236;background:transparent;font-size:21px;padding:0 2px;outline:none;width:100%}
+.title-inp{height:50px;border:none;border-bottom:1px solid #6E5236;background:transparent;font-size:max(16px,calc(19px*var(--fz,1)));padding:0 2px;outline:none;width:100%}
 input[type=date].inp{color-scheme:dark;min-width:0}
 .switch{position:relative;width:50px;height:30px;border-radius:15px;border:1px solid #4A3626;background:#0F0A07;flex-shrink:0}
 .switch i{position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:11px;background:#6E5236;transition:left .2s,background .2s}
 .switch.on{background:var(--gold);border-color:#F3DCA6}.switch.on i{left:23px;background:var(--dark)}
-.timebtn{height:36px;padding:0 12px;border-radius:10px;font-size:15px;border:1px solid #4A3626;background:#2A1D15}
+.timebtn{height:36px;padding:0 12px;border-radius:10px;font-size:calc(14px*var(--fz,1));border:1px solid #4A3626;background:#2A1D15}
 .timebtn.on{background:var(--gold);color:var(--dark);border-color:#F3DCA6;font-weight:700}
 .picker{display:flex;flex-direction:column;gap:8px;padding:10px 0 12px;background:#1B130E;border-bottom:1px solid var(--line)}
 .fine{display:flex;gap:6px;padding:0 14px;align-items:center}
-.fine button{flex:1;height:40px;border-radius:20px;border:1px solid #4A3626;background:transparent;font-size:13px}
+.fine button{flex:1;height:40px;border-radius:20px;border:1px solid #4A3626;background:transparent;font-size:calc(12px*var(--fz,1))}
 .wdays{display:flex;justify-content:space-between;gap:4px}
-.wdays button{width:42px;height:42px;border-radius:21px;border:1px solid #4A3626;background:transparent;font-size:14px}
+.wdays button{width:42px;height:42px;border-radius:21px;border:1px solid #4A3626;background:transparent;font-size:calc(13px*var(--fz,1))}
 .wdays button.on{background:var(--gold);color:var(--dark);border-color:#F3DCA6;font-weight:700}
-.alarmchip{display:inline-flex;align-items:center;height:40px;padding:0 2px 0 14px;border-radius:20px;background:var(--gold);color:var(--dark);font-size:14px;font-weight:500}
+.alarmchip{display:inline-flex;align-items:center;height:40px;padding:0 2px 0 14px;border-radius:20px;background:var(--gold);color:var(--dark);font-size:calc(13px*var(--fz,1));font-weight:500}
 .alarmchip button{width:36px;height:36px;border:none;background:transparent;color:var(--dark);display:flex;align-items:center;justify-content:center}
-.note{margin:0;font-size:13px;color:var(--mut);line-height:1.55}
+.note{margin:0;font-size:calc(12px*var(--fz,1));color:var(--mut);line-height:1.55}
 .note b{color:var(--goldL)}
 .swatches{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:6px;justify-items:center}
 .swatches button{width:34px;height:34px;border-radius:17px;border:1px solid rgba(255,255,255,.12)}
@@ -158,30 +159,30 @@ input[type=date].inp{color-scheme:dark;min-width:0}
 /* day timeline */
 .tl{position:relative}
 .tl .h{position:absolute;left:0;right:0;display:flex;align-items:flex-start;pointer-events:none}
-.tl .h span{width:46px;text-align:right;padding-right:8px;font-size:11px;color:var(--dim);transform:translateY(-7px)}
+.tl .h span{width:46px;text-align:right;padding-right:8px;font-size:calc(10.5px*var(--fz,1));color:var(--dim);transform:translateY(-7px)}
 .tl .h i{flex:1;border-top:1px solid var(--line2)}
 .tb{position:absolute;border:none;text-align:left;border-radius:9px;padding:4px 9px;overflow:hidden;display:flex;flex-direction:column;gap:1px;box-shadow:0 4px 10px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.22)}
-.tb b{font-size:13px;line-height:1.2} .tb small{font-size:11px;opacity:.85;white-space:nowrap}
+.tb b{font-size:calc(12px*var(--fz,1));line-height:1.2} .tb small{font-size:calc(10.5px*var(--fz,1));opacity:.85;white-space:nowrap}
 .adlist{display:flex;gap:6px;flex-wrap:wrap}
-.adchip{display:inline-flex;align-items:center;min-height:28px;padding:0 10px;border-radius:7px;font-size:12.5px;font-weight:500;border:none}
+.adchip{display:inline-flex;align-items:center;min-height:28px;padding:0 10px;border-radius:7px;font-size:calc(11.5px*var(--fz,1));font-weight:500;border:none}
 
 .evlist{display:flex;flex-direction:column}
 .evrow{display:flex;align-items:center;gap:10px;min-height:52px;padding:0 14px;border-bottom:1px solid var(--line)}
 .evrow:last-child{border-bottom:none}
 .evrow input{width:20px;height:20px;accent-color:#C9A46A}
-.evrow .t{width:78px;font-size:13px;color:var(--mut);font-variant-numeric:tabular-nums}
-.evrow .n{flex:1;font-size:15px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.evrow .t{width:78px;font-size:calc(12px*var(--fz,1));color:var(--mut);font-variant-numeric:tabular-nums}
+.evrow .n{flex:1;font-size:calc(14px*var(--fz,1));min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mini{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:2px}
-.mini button{height:38px;border-radius:10px;border:1px solid transparent;background:transparent;font-size:14px}
+.mini button{height:38px;border-radius:10px;border:1px solid transparent;background:transparent;font-size:calc(13px*var(--fz,1))}
 .mini button.on{background:var(--gold);color:var(--dark);border-color:#F3DCA6;font-weight:700}
 .mini button[disabled]{color:#4A3B30}
-.mini span{text-align:center;font-size:11px;color:var(--mut)}
-.summary{margin:0;padding:12px 14px;border-radius:12px;background:#0F0A07;border:1px solid var(--line);font-size:14px;line-height:1.6}
+.mini span{text-align:center;font-size:calc(10.5px*var(--fz,1));color:var(--mut)}
+.summary{margin:0;padding:12px 14px;border-radius:12px;background:#0F0A07;border:1px solid var(--line);font-size:calc(13px*var(--fz,1));line-height:1.6}
 
-.toast{position:fixed;left:50%;bottom:calc(92px + var(--sat-bot));transform:translateX(-50%);z-index:40;padding:10px 16px;border-radius:20px;background:#1E150F;border:1px solid #6E5236;color:var(--goldL);font-size:14px;box-shadow:0 8px 20px rgba(0,0,0,.6);animation:toast 2.4s ease both;white-space:nowrap}
-.loading{position:absolute;top:4px;right:14px;font-size:11px;color:var(--mut);z-index:3}
-.banner{margin:0 12px 6px;padding:8px 12px;border-radius:10px;border:1px solid #6E5236;background:rgba(201,164,106,.08);font-size:12.5px;color:var(--goldL);display:flex;justify-content:space-between;align-items:center;gap:8px}
-.banner button{border:none;background:none;color:var(--goldL);text-decoration:underline;font-size:12.5px;padding:4px}
+.toast{position:fixed;left:50%;bottom:calc(92px + var(--sat-bot) - var(--gap,0px));transform:translateX(-50%);z-index:40;padding:10px 16px;border-radius:20px;background:#1E150F;border:1px solid #6E5236;color:var(--goldL);font-size:calc(13px*var(--fz,1));box-shadow:0 8px 20px rgba(0,0,0,.6);animation:toast 2.4s ease both;white-space:nowrap}
+.loading{position:absolute;top:4px;right:14px;font-size:calc(10.5px*var(--fz,1));color:var(--mut);z-index:3}
+.banner{margin:0 12px 6px;padding:8px 12px;border-radius:10px;border:1px solid #6E5236;background:rgba(201,164,106,.08);font-size:calc(11.5px*var(--fz,1));color:var(--goldL);display:flex;justify-content:space-between;align-items:center;gap:8px}
+.banner button{border:none;background:none;color:var(--goldL);text-decoration:underline;font-size:calc(11.5px*var(--fz,1));padding:4px}
 
 @keyframes up{from{transform:translateY(100%)}to{transform:translateY(0)}}
 @keyframes down{from{transform:translateY(0)}to{transform:translateY(100%)}}
@@ -196,17 +197,17 @@ input[type=date].inp{color-scheme:dark;min-width:0}
 @keyframes pulse{0%,100%{opacity:.25}50%{opacity:1}}
 /* tasks */
 .prog{display:flex;flex-direction:column;gap:6px;margin:4px 4px 0}
-.prog .t{display:flex;justify-content:space-between;font-size:12px;color:var(--mut)}
+.prog .t{display:flex;justify-content:space-between;font-size:calc(11px*var(--fz,1));color:var(--mut)}
 .prog .b{height:4px;border-radius:2px;background:#241911;overflow:hidden}
 .prog .b i{display:block;height:100%;background:var(--gold);box-shadow:0 0 8px rgba(227,196,142,.6);transition:width .4s}
 .qadd{margin:14px 0 0;padding:10px;border-radius:16px;background:var(--card);border:1px solid var(--line);box-shadow:inset 0 1px 0 rgba(227,196,142,.12),0 10px 24px rgba(0,0,0,.5);display:flex;flex-direction:column;gap:8px}
 .qadd .r{display:flex;gap:8px;align-items:center}
-.qadd input{flex:1;height:44px;border:none;border-bottom:1px solid #4A3626;background:transparent;font-size:16px;padding:0 4px;outline:none}
-.qadd .go{width:44px;height:44px;border-radius:22px;border:1px solid #F3DCA6;background:var(--gold);color:var(--dark);display:flex;align-items:center;justify-content:center}
+.qadd input{flex:1;min-width:0;height:44px;border:none;border-bottom:1px solid #4A3626;background:transparent;font-size:16px;padding:0 4px;outline:none}
+.qadd .go{flex-shrink:0;width:44px;height:44px;border-radius:22px;border:1px solid #F3DCA6;background:var(--gold);color:var(--dark);display:flex;align-items:center;justify-content:center}
 .tgroup{display:flex;flex-direction:column;gap:6px;margin-top:14px}
 .tgh{display:flex;align-items:center;justify-content:space-between;padding:6px 6px 0}
-.tgh h3{margin:0;font-size:16px;color:var(--goldL)} .tgh h3.late{color:var(--sun)} .tgh h3.mute{color:var(--mut)}
-.tgh h3 small{font-family:'Noto Sans KR',sans-serif;font-size:12px;font-weight:400;color:var(--mut);margin-left:4px}
+.tgh h3{margin:0;font-size:calc(14.5px*var(--fz,1));color:var(--goldL)} .tgh h3.late{color:var(--sun)} .tgh h3.mute{color:var(--mut)}
+.tgh h3 small{font-family:'Noto Sans KR',sans-serif;font-size:calc(11px*var(--fz,1));font-weight:400;color:var(--mut);margin-left:4px}
 .tlist{display:flex;flex-direction:column;border-radius:14px;background:linear-gradient(180deg,#1A120D,#0F0A07);border:1px solid var(--line)}
 .trow{position:relative;overflow:hidden;display:flex;align-items:center;gap:4px;padding-left:4px;min-height:52px;border-bottom:1px solid var(--line2);transition:opacity .6s ease .7s}
 .trow:last-child{border-bottom:none}
@@ -222,12 +223,12 @@ input[type=date].inp{color-scheme:dark;min-width:0}
 .ring{left:11px;top:11px;width:22px;height:22px;border-radius:11px;border:1.5px solid #E3C48E}
 .sp{left:20px;top:20px;width:4px;height:4px;border-radius:2px;background:#F3DCA6;box-shadow:0 0 6px #F3DCA6}
 .tmain{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;padding:10px 0;cursor:pointer}
-.ttl{position:relative;align-self:flex-start;max-width:100%;font-size:15px;line-height:1.35;color:var(--ink)}
+.ttl{position:relative;align-self:flex-start;max-width:100%;font-size:calc(14px*var(--fz,1));line-height:1.35;color:var(--ink)}
 .trow.done .ttl{color:var(--dim)}
 .strike{position:absolute;left:0;right:0;top:52%;height:1.5px;border-radius:1px;transform-origin:left center;transform:scaleX(0);background:linear-gradient(90deg,#F3DCA6,#C9A46A 60%,rgba(142,107,58,.6))}
 .trow.done .strike{transform:scaleX(1)}
-.tmeta{font-size:12px;color:var(--mut)}
-.tside{height:32px;padding:0 10px;margin-right:10px;border-radius:16px;border:1px solid #4A3626;background:transparent;color:var(--goldL);font-size:12px;flex-shrink:0}
+.tmeta{font-size:calc(11px*var(--fz,1));color:var(--mut)}
+.tside{height:32px;padding:0 10px;margin-right:10px;border-radius:16px;border:1px solid #4A3626;background:transparent;color:var(--goldL);font-size:calc(11px*var(--fz,1));flex-shrink:0}
 .shine{position:absolute;top:0;bottom:0;left:0;width:30%;background:linear-gradient(90deg,transparent,rgba(243,220,166,.16),transparent);pointer-events:none;opacity:0}
 .trow.jd .ckbox{background:transparent!important}
 .trow.jd .ckbox::before{content:'';position:absolute;width:22px;height:22px;border-radius:11px;background:var(--gold);animation:ckFill .45s cubic-bezier(.2,.9,.3,1.3) both}
@@ -260,27 +261,27 @@ input[type=date].inp{color-scheme:dark;min-width:0}
 @keyframes inkBack{0%{color:#7F6B55}60%{color:#F3DCA6}100%{color:#EFE3CF}}
 @keyframes ckOut{0%{transform:scale(1);opacity:1}35%{transform:scale(1.12);opacity:1}100%{transform:scale(0);opacity:0}}
 @keyframes ringIn{0%{transform:scale(2.2);opacity:0}60%{opacity:.7}100%{transform:scale(1);opacity:0}}
-.donetoggle{align-self:flex-start;height:40px;padding:0 8px;margin-top:10px;border:none;background:transparent;color:var(--mut);font-size:14px;display:flex;align-items:center;gap:6px}
+.donetoggle{align-self:flex-start;height:40px;padding:0 8px;margin-top:10px;border:none;background:transparent;color:var(--mut);font-size:calc(13px*var(--fz,1));display:flex;align-items:center;gap:6px}
 /* gantt */
 .gcard{position:relative;margin-top:8px;border-radius:16px;background:linear-gradient(180deg,#1A120D,#0F0A07);border:1px solid var(--line);box-shadow:inset 0 1px 0 rgba(227,196,142,.12),0 10px 24px rgba(0,0,0,.5);overflow:hidden}
 .gticks{position:relative;height:30px;border-bottom:1px solid #2A1D15}
-.gticks span{position:absolute;top:8px;font-size:11px;color:var(--mut);white-space:nowrap;transform:translateX(-2px)}
+.gticks span{position:absolute;top:8px;font-size:calc(10.5px*var(--fz,1));color:var(--mut);white-space:nowrap;transform:translateX(-2px)}
 .gbody{position:relative;padding-bottom:8px}
 .ggl{position:absolute;top:0;bottom:0;width:1px;background:var(--line3);pointer-events:none}
 .gtoday{position:absolute;top:0;bottom:0;width:1.5px;background:linear-gradient(180deg,#F3DCA6,rgba(201,164,106,.15));box-shadow:0 0 8px rgba(243,220,166,.6);animation:todayPulse 2.4s ease-in-out infinite;pointer-events:none;z-index:1}
 @keyframes todayPulse{0%,100%{opacity:.55}50%{opacity:1}}
-.gsec{margin:10px 0 0;padding:0 12px;font-size:13px;letter-spacing:2px;color:var(--goldM)}
+.gsec{margin:10px 0 0;padding:0 12px;font-size:calc(12px*var(--fz,1));letter-spacing:2px;color:var(--goldM)}
 .grow{display:flex;flex-direction:column;gap:6px;width:100%;padding:8px 12px;border:none;background:transparent;text-align:left;position:relative}
 .grow.on{background:linear-gradient(90deg,rgba(201,164,106,.12),rgba(201,164,106,.02));box-shadow:inset 0 0 0 1px #6E5236;border-radius:10px}
-.grow .n{display:flex;justify-content:space-between;gap:8px;font-size:14px;font-weight:500}
-.grow .n span:last-child{font-size:11px;color:var(--mut);font-weight:400}
+.grow .n{display:flex;justify-content:space-between;gap:8px;font-size:calc(13px*var(--fz,1));font-weight:500}
+.grow .n span:last-child{font-size:calc(10.5px*var(--fz,1));color:var(--mut);font-weight:400}
 .gtrack{position:relative;height:14px}
 .gseg{position:absolute;top:0;height:14px;border-radius:7px;transform-origin:left center;animation:barIn .6s cubic-bezier(.2,.8,.2,1) both}
 @keyframes barIn{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 .gms{position:absolute;top:2px;width:10px;height:10px;transform:rotate(45deg);background:var(--gold);box-shadow:0 0 8px rgba(243,220,166,.6);border-radius:2px}
-.gout{font-size:11px;color:var(--dim);line-height:14px}
+.gout{font-size:calc(10.5px*var(--fz,1));color:var(--dim);line-height:14px}
 .gdet{margin-top:12px;padding:14px;border-radius:16px;background:var(--card);border:1px solid var(--line);box-shadow:inset 0 1px 0 rgba(227,196,142,.12);display:flex;flex-direction:column;gap:10px}
-.empty{padding:40px 20px;text-align:center;color:var(--mut);font-size:14px;line-height:1.7}
+.empty{padding:40px 20px;text-align:center;color:var(--mut);font-size:calc(13px*var(--fz,1));line-height:1.7}
 
 .blk span{opacity:.88}
 :root{--pagebg:linear-gradient(180deg,#140D0A 0%,#0B0806 60%,#070504 100%)}
@@ -307,18 +308,18 @@ input[type=date].inp{color-scheme:dark;min-width:0}
 .npaper::before{content:'';position:absolute;top:0;bottom:0;left:40px;width:1px;background:rgba(232,149,122,.30);pointer-events:none}
 .npaper::after{content:'';position:absolute;top:10px;bottom:10px;left:8px;width:12px;background:radial-gradient(circle at 6px 6px,#070504 3.5px,rgba(201,164,106,.25) 4px,transparent 4.5px) 0 0/12px 34px;opacity:.9;pointer-events:none}
 .nhead{display:flex;align-items:center;gap:10px;padding-left:36px;margin-bottom:6px}
-.nstamp{font-family:'Nanum Myeongjo',serif;font-weight:700;font-size:12px;letter-spacing:2px;color:#C9A46A;border:1px solid rgba(201,164,106,.45);padding:3px 8px;border-radius:3px;transform:rotate(-1.5deg);white-space:nowrap}
+.nstamp{font-family:'Nanum Myeongjo',serif;font-weight:700;font-size:calc(11px*var(--fz,1));letter-spacing:2px;color:#C9A46A;border:1px solid rgba(201,164,106,.45);padding:3px 8px;border-radius:3px;transform:rotate(-1.5deg);white-space:nowrap}
 .nline{flex:1;height:1px;background:linear-gradient(90deg,rgba(201,164,106,.45),transparent)}
 .ntitle{border:none;background:transparent;color:#F1E4CC;outline:none;padding:4px 0 6px 36px;width:100%;border-bottom:1px solid rgba(201,164,106,.25);min-width:0}
 .nmemo{width:100%;border:none;outline:none;color:#E9DCC4;padding:0 6px 0 36px;margin-top:6px;white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere;-webkit-user-select:text;user-select:text;
   background-image:linear-gradient(to bottom,transparent calc(100% - 1px),rgba(201,164,106,.16) calc(100% - 1px));background-repeat:repeat-y}
 .nmemo:empty::before{content:attr(data-ph);color:#6E5A47}
 .nmemo u{text-decoration-color:rgba(227,196,142,.7);text-underline-offset:3px}
-.nchip{min-height:34px;padding:0 10px;border-radius:17px;border:1px solid #4A3626;background:transparent;color:#D9C7A8;font-size:13px;display:inline-flex;align-items:center;gap:2px;flex-shrink:0;white-space:nowrap}
+.nchip{min-height:34px;padding:0 10px;border-radius:17px;border:1px solid #4A3626;background:transparent;color:#D9C7A8;font-size:calc(12px*var(--fz,1));display:inline-flex;align-items:center;gap:2px;flex-shrink:0;white-space:nowrap}
 .nchip.on{border-color:#C9A46A;color:#140D09;background:var(--gold)}
-.nchip small{font-size:11px}
-.tmemo{font-size:15px;color:#BFA987;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2}
-#cover{position:fixed;inset:0;z-index:9999;perspective:1600px;pointer-events:auto;background:transparent}
+.nchip small{font-size:calc(10.5px*var(--fz,1))}
+.tmemo{font-size:calc(14px*var(--fz,1));color:#BFA987;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2}
+#cover{position:fixed;inset:0 0 calc(-1*var(--gap,0px)) 0;z-index:9999;perspective:1600px;pointer-events:auto;background:transparent}
 #cover .cv{position:absolute;inset:0;background:#0D0907 radial-gradient(ellipse at 45% 38%,#2A1C12 0%,#120C08 55%,#080504 100%);transform-origin:0 50%;will-change:transform,opacity;box-shadow:12px 0 40px rgba(0,0,0,.7)}
 #cover .cv img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
 #cover .cv::after{content:'';position:absolute;inset:0;background:#000;opacity:0;transition:opacity .95s ease-in}
@@ -352,7 +353,7 @@ input[type=date].inp{color-scheme:dark;min-width:0}
 </div>
 <script>
 'use strict';
-const APP_V = '3.10';
+const APP_V = '3.11';
 /* ========== 기본 도구 ========== */
 const $ = s => document.querySelector(s);
 const pad = n => String(n).padStart(2, '0');
@@ -632,7 +633,7 @@ function drawWeek(dir) {
     const d = addD(a, i); let blocks = '';
     layoutDay(clipDay(list, d)).forEach(it => {
       const top = 8 + it.a / 60 * PX, ht = Math.max((it.b - it.a) / 60 * PX - 1, 6), w = 100 / it.n;
-      blocks += '<button class="blk" data-ev="' + esc(it.x.calId + '|' + it.x.id + '|' + it.x.start) + '" style="top:' + top + 'px;height:' + ht + 'px;left:calc(' + (it.col * w) + '% + 1px);width:calc(' + w + '% - 2px);background:linear-gradient(180deg,' + it.x.color + ',' + it.x.color + 'D9);color:' + fg(it.x.color) + (ht < 16 ? ';font-size:' + Math.max(7, Math.min(8.5, ht - 2)) + 'px;line-height:' + Math.max(7, ht - 1) + 'px;padding:0 3px;white-space:nowrap;justify-content:center;align-items:flex-start' : '') + (it.n > 1 && ht >= 16 ? ';font-size:8px;padding:2px 1px' : '') + '"><span>' + (ht >= 16 ? esc(it.x.title).replace(/^(\[[^\]]+\])\s*/, '$1<br>') : esc(it.x.title)) + '</span></button>';
+      blocks += '<button class="blk" data-ev="' + esc(it.x.calId + '|' + it.x.id + '|' + it.x.start) + '" style="top:' + top + 'px;height:' + ht + 'px;left:calc(' + (it.col * w) + '% + 1px);width:calc(' + w + '% - 2px);background:linear-gradient(180deg,' + it.x.color + ',' + it.x.color + 'D9);color:' + fg(it.x.color) + (ht < 16 ? ';font-size:' + Math.max(7, Math.min(8.5, ht - 2)) + 'px;line-height:' + Math.max(7, ht - 1) + 'px;padding:0 3px;white-space:nowrap;justify-content:center;align-items:flex-start' : '') + (it.n > 1 && ht >= 16 ? ';font-size:calc(8px*var(--fz,1));padding:2px 1px' : '') + '"><span>' + (ht >= 16 ? esc(it.x.title).replace(/^(\[[^\]]+\])\s*/, '$1<br>') : esc(it.x.title)) + '</span></button>';
     });
     cols += '<div class="wkcol' + (same(d, today) ? ' today' : '') + '" data-slot="' + ymd(d) + '">' + blocks + '</div>';
   }
@@ -660,7 +661,7 @@ function openSheet(html, onClick, opts = {}) {
 }
 function closeSheet() { const e = sheetStack.pop(); if (!e) return; e.sh.classList.add('closing'); e.dim.classList.add('closing'); setTimeout(() => { e.sh.remove(); e.dim.remove(); }, 240); }
 function closeAll() { while (sheetStack.length) closeSheet(); }
-const sec = (t, inner) => '<section style="display:flex;flex-direction:column;gap:10px"><h3 class="serif" style="margin:0;font-size:15px;color:var(--goldL)">' + t + '</h3>' + inner + '</section>';
+const sec = (t, inner) => '<section style="display:flex;flex-direction:column;gap:10px"><h3 class="serif" style="margin:0;font-size:calc(14px*var(--fz,1));color:var(--goldL)">' + t + '</h3>' + inner + '</section>';
 
 /* ========== 일정 수정 (중계 이용) ========== */
 const GAPI = 'https://www.googleapis.com/calendar/v3';
@@ -721,7 +722,7 @@ function openDetail(ev) {
   const when = ev.allDay ? (koD(ev.s) + (ev.e - ev.s > 864e5 ? ' – ' + koD(endShown) : '') + ' · 종일')
     : (koD(ev.s) + ' ' + ko(mins(ev.s)) + ' – ' + (same(ev.s, ev.e) ? '' : koD(ev.e) + ' ') + ko(mins(ev.e)));
   const html = '<div class="shead"><button class="tbtn" data-a="close">닫기</button><span></span><span style="width:52px"></span></div><div class="sbody">'
-    + '<div style="display:flex;gap:12px;align-items:flex-start"><span style="width:10px;align-self:stretch;min-height:44px;border-radius:5px;background:linear-gradient(180deg,' + ev.color + ',' + ev.color + 'A0);box-shadow:0 0 10px ' + ev.color + '66"></span><div style="display:flex;flex-direction:column;gap:4px"><h2 class="serif" style="margin:0;font-size:21px;color:var(--ink)">' + esc(ev.title) + '</h2><span class="note">' + when + '</span><span class="note">' + esc(cal.name) + (ev.recurring ? ' · 반복 일정' : '') + '</span></div></div>'
+    + '<div style="display:flex;gap:12px;align-items:flex-start"><span style="width:10px;align-self:stretch;min-height:44px;border-radius:5px;background:linear-gradient(180deg,' + ev.color + ',' + ev.color + 'A0);box-shadow:0 0 10px ' + ev.color + '66"></span><div style="display:flex;flex-direction:column;gap:4px"><h2 class="serif" style="margin:0;font-size:calc(19px*var(--fz,1));color:var(--ink)">' + esc(ev.title) + '</h2><span class="note">' + when + '</span><span class="note">' + esc(cal.name) + (ev.recurring ? ' · 반복 일정' : '') + '</span></div></div>'
     + (ev.location ? '<div><div class="lab">장소</div><p class="note" style="color:var(--ink)">' + esc(ev.location) + '</p></div>' : '')
     + (ev.desc ? '<div><div class="lab">메모</div><p class="note" style="color:var(--ink);white-space:pre-wrap">' + esc(ev.desc) + '</p></div>' : '')
     + '<div class="row" style="gap:8px">' + (cal.owned ? '<button class="obtn" data-a="edit" style="flex:1;height:48px;border-color:#8E6B3A;color:var(--goldL)">수정</button>' : '') + '<button class="gbtn" data-a="dup" style="flex:1.4;height:48px">복제하기</button>' + (cal.owned ? '<button class="obtn" data-a="del" style="flex:1;height:48px">' + (ev.recurring ? '이 날만 삭제' : '삭제') + '</button>' : '') + '</div>'
@@ -759,7 +760,7 @@ function openCreate(pre = {}) {
   const slots = () => { let s = ''; for (let m = 0; m < 1440; m += 30) s += '<button class="pillb' + (Math.floor(f.st / 30) * 30 === m ? ' on' : '') + '" data-a="slot" data-m="' + m + '">' + ko(m) + '</button>'; return s; };
   const body = () => '<label style="display:flex;flex-direction:column;gap:4px"><span class="lab">제목</span><input class="title-inp" id="fTitle" placeholder="일정 제목" value="' + esc(f.title) + '" autocomplete="off"></label>'
     + '<div style="display:flex;flex-direction:column;gap:8px"><span class="lab">캘린더 · 색은 구글 캘린더 색 그대로</span><div class="row">' + st.cals.filter(c => c.owned && !isHol(c.id)).map(c => '<button class="pillb' + (f.cal === c.id ? ' on' : '') + '" data-a="cal" data-id="' + esc(c.id) + '">' + esc(c.name) + '</button>').join('') + '<button class="pillb dash" data-a="newcat">+ 새 카테고리</button></div>'
-    + (f.newOpen ? '<div class="box" style="padding:14px;gap:12px;border-color:#6E5236"><span class="serif" style="font-size:15px;color:var(--goldL)">새 카테고리</span><label style="display:flex;flex-direction:column;gap:6px"><span class="lab">이름</span><input class="inp" id="fNewName" placeholder="예: [Japanese]일본어하자" value="' + esc(f.newName) + '"></label><div class="swatches">' + SW.map(w => '<button aria-label="' + w[0] + '" class="' + (f.newColor.toLowerCase() === w[1].toLowerCase() ? 'on' : '') + '" data-a="sw" data-c="' + w[1] + '" style="background:' + w[1] + '"></button>').join('') + '</div><label class="row lab" style="min-height:44px"><input type="color" id="fNewColor" value="' + f.newColor + '" style="width:36px;height:36px;border:none;padding:0;background:transparent">직접 고르기</label><div class="row"><button class="obtn" data-a="newcat" style="flex:1">취소</button><button class="gbtn" data-a="mkcat" style="flex:2;height:44px">만들기</button></div><span class="lab">구글 캘린더에도 같은 이름·색으로 만들어집니다. 삭제·공유는 구글 캘린더에서 해 주세요.</span></div>' : '') + '</div>'
+    + (f.newOpen ? '<div class="box" style="padding:14px;gap:12px;border-color:#6E5236"><span class="serif" style="font-size:calc(14px*var(--fz,1));color:var(--goldL)">새 카테고리</span><label style="display:flex;flex-direction:column;gap:6px"><span class="lab">이름</span><input class="inp" id="fNewName" placeholder="예: [Japanese]일본어하자" value="' + esc(f.newName) + '"></label><div class="swatches">' + SW.map(w => '<button aria-label="' + w[0] + '" class="' + (f.newColor.toLowerCase() === w[1].toLowerCase() ? 'on' : '') + '" data-a="sw" data-c="' + w[1] + '" style="background:' + w[1] + '"></button>').join('') + '</div><label class="row lab" style="min-height:44px"><input type="color" id="fNewColor" value="' + f.newColor + '" style="width:36px;height:36px;border:none;padding:0;background:transparent">직접 고르기</label><div class="row"><button class="obtn" data-a="newcat" style="flex:1">취소</button><button class="gbtn" data-a="mkcat" style="flex:2;height:44px">만들기</button></div><span class="lab">구글 캘린더에도 같은 이름·색으로 만들어집니다. 삭제·공유는 구글 캘린더에서 해 주세요.</span></div>' : '') + '</div>'
     + '<div class="box"><div class="boxrow" style="justify-content:space-between">종일<button class="switch' + (f.allDay ? ' on' : '') + '" role="switch" aria-checked="' + f.allDay + '" aria-label="종일" data-a="allday"><i></i></button></div>'
     + '<div class="boxrow"><span class="lab" style="width:30px">' + (f.allDay ? '시작' : '날짜') + '</span><input type="date" class="inp" id="fDate" value="' + f.date + '" style="flex:1;height:40px;border:none;background:transparent;padding:0"></div>'
     + (f.allDay ? '<div class="boxrow"><span class="lab" style="width:30px">종료</span><input type="date" class="inp" id="fEnd" value="' + f.endDate + '" style="flex:1;height:40px;border:none;background:transparent;padding:0"></div>'
@@ -784,7 +785,7 @@ function openCreate(pre = {}) {
     sh.querySelectorAll('[data-a=eslot]').forEach(x => x.classList.toggle('on', Number(x.dataset.m) === f.st + f.dur));
     sh.querySelectorAll('[data-a=dur]').forEach(x => x.classList.toggle('on', Number(x.dataset.v) === f.dur));
   };
-  sh = openSheet('<div class="shead"><button class="tbtn" data-a="cancel">취소</button><h2 class="serif goldtext" style="font-size:20px;letter-spacing:1px">' + (E ? '일정 수정' : '새 일정') + '</h2><button class="gbtn" data-a="save">저장</button></div><div class="sbody">' + body() + '</div>', async (a, t) => {
+  sh = openSheet('<div class="shead"><button class="tbtn" data-a="cancel">취소</button><h2 class="serif goldtext" style="font-size:calc(17px*var(--fz,1));letter-spacing:1px">' + (E ? '일정 수정' : '새 일정') + '</h2><button class="gbtn" data-a="save">저장</button></div><div class="sbody">' + body() + '</div>', async (a, t) => {
     const v = t.dataset.v;
     switch (a) {
       case 'cancel': closeSheet(); return;
@@ -872,11 +873,11 @@ async function openDuplicate(o) {
     h += sec('3 · 시간', '<div class="row">' + SH.map(s => '<button class="pillb' + (f.shift === s[0] ? ' on' : '') + '" data-a="sh" data-v="' + s[0] + '">' + s[1] + '</button>').join('') + '</div>');
     const dt = ks.length === 0 ? '날짜를 골라 주세요' : ks.length <= 3 ? ks.map(k => koD(pymd(k))).join(', ') : koD(pymd(ks[0])) + ' 외 ' + (ks.length - 1) + '일';
     h += '<p class="summary">' + sel.length + '개 일정을 ' + dt + '로 복제합니다. 시간은 ' + (f.shift ? (f.shift > 0 ? '+' : '−') + (Math.abs(f.shift) === 60 ? '1시간' : '30분') + ' 옮겨서' : '그대로') + ', 캘린더·장소·메모도 함께 가져갑니다.</p>';
-    h += '<button class="gbtn" data-a="go" style="height:52px;border-radius:14px;font-size:16px"' + (sel.length * ks.length ? '' : ' disabled') + '>' + (sel.length * ks.length ? '일정 ' + sel.length * ks.length + '개 만들기' : '고른 일정이 없어요') + '</button>';
+    h += '<button class="gbtn" data-a="go" style="height:52px;border-radius:14px;font-size:calc(14.5px*var(--fz,1))"' + (sel.length * ks.length ? '' : ' disabled') + '>' + (sel.length * ks.length ? '일정 ' + sel.length * ks.length + '개 만들기' : '고른 일정이 없어요') + '</button>';
     return h;
   };
   const redraw = () => { const b = sh.querySelector('.sbody'), y = b.scrollTop; b.innerHTML = body(); b.scrollTop = y; };
-  sh = openSheet('<div class="shead"><button class="tbtn" data-a="cancel">취소</button><h2 class="serif goldtext" style="font-size:20px">복제하기</h2><span style="width:52px"></span></div><div class="sbody">' + body() + '</div>', async (a, t) => {
+  sh = openSheet('<div class="shead"><button class="tbtn" data-a="cancel">취소</button><h2 class="serif goldtext" style="font-size:calc(17px*var(--fz,1))">복제하기</h2><span style="width:52px"></span></div><div class="sbody">' + body() + '</div>', async (a, t) => {
     const v = t.dataset.v;
     if (a === 'cancel') { closeSheet(); return; }
     if (a === 'src') { f.src = Number(v); if (SRC[f.src][1]) { f.srcDate = ymd(SRC[f.src][1](tgtBase)); await loadSrc(); } }
@@ -908,7 +909,7 @@ async function loadTasks(force) {
 }
 function renderTasks() {
   loadFont(S.noteFont || 'pen');
-  $('#hAlt').innerHTML = T.lists && T.lists.length > 1 ? '<select class="inp" id="listSel" aria-label="목록" style="height:40px;min-width:120px;border-radius:20px;font-size:14px;background:#120C09">' + T.lists.map(l => '<option value="' + esc(l.id) + '"' + (l.id === S.listId ? ' selected' : '') + '>' + esc(l.title) + '</option>').join('') + '</select>' : '';
+  $('#hAlt').innerHTML = T.lists && T.lists.length > 1 ? '<select class="inp" id="listSel" aria-label="목록" style="height:40px;min-width:120px;border-radius:20px;font-size:calc(13px*var(--fz,1));background:#120C09">' + T.lists.map(l => '<option value="' + esc(l.id) + '"' + (l.id === S.listId ? ' selected' : '') + '>' + esc(l.title) + '</option>').join('') + '</select>' : '';
   drawTasks();
   loadTasks().then(ch => { if (st.tab === 'task' && (ch || !$('#tscroll'))) renderTasks(); }).catch(err => { if (!T.lists) $('#main').innerHTML = '<div class="empty">할 일을 불러오지 못했습니다.<br>' + esc(err.message) + '</div>'; });
 }
@@ -994,19 +995,19 @@ function openTask(x) {
   const paperStyle = () => 'font-family:' + NF(S.noteFont)[2] + ';font-size:' + fs() + 'px;line-height:' + lh() + 'px;background-size:100% ' + lh() + 'px;min-height:' + (lh() * 10) + 'px';
   let sh;
   const dueRow = () => '<div class="scrollx" style="padding:0 0 8px 36px">' + Q.map(q => '<button class="nchip' + (f.due === q[1] ? ' on' : '') + '" data-a="kq" data-v="' + q[1] + '">' + q[0] + '</button>').join('') + '<label class="nchip" style="position:relative;overflow:hidden;flex-shrink:0">날짜 고르기<input type="date" id="kDue" value="' + f.due + '" style="position:absolute;inset:0;opacity:0"></label></div>';
-  const html = '<div class="shead"><button class="tbtn" data-a="cancel">취소</button><h2 class="serif goldtext" style="font-size:19px">할 일 · 메모</h2><button class="gbtn" data-a="ksave">저장</button></div>'
+  const html = '<div class="shead"><button class="tbtn" data-a="cancel">취소</button><h2 class="serif goldtext" style="font-size:calc(17px*var(--fz,1))">할 일 · 메모</h2><button class="gbtn" data-a="ksave">저장</button></div>'
     + '<div class="ntoolbar">'
     + '<div class="scrollx" id="fontRow">' + NFONTS.map(z => '<button class="nchip fmt' + (S.noteFont === z[0] ? ' on' : '') + '" data-a="nf" data-v="' + z[0] + '"><span style="font-family:' + z[2] + ';font-size:' + Math.round(14 * z[4]) + 'px">' + z[1] + '</span></button>').join('') + '</div>'
-    + '<div class="row" style="gap:4px;justify-content:space-between;flex-wrap:nowrap"><div class="row" style="gap:4px;flex-wrap:nowrap"><button class="nchip fmt" data-a="bold" aria-label="굵게" style="font-weight:800;width:38px;justify-content:center">B</button><button class="nchip fmt" data-a="under" aria-label="밑줄" style="text-decoration:underline;width:38px;justify-content:center">U</button>'
+    + '<div class="row" style="gap:4px;row-gap:8px;justify-content:space-between;flex-wrap:wrap"><div class="row" style="gap:4px;flex-wrap:nowrap"><button class="nchip fmt" data-a="bold" aria-label="굵게" style="font-weight:800;width:38px;justify-content:center">B</button><button class="nchip fmt" data-a="under" aria-label="밑줄" style="text-decoration:underline;width:38px;justify-content:center">U</button>'
     + INKS.map(k => '<button class="ink fmt" data-a="ink" data-v="' + k[1] + '" aria-label="' + k[0] + ' 잉크" style="background:' + k[1] + '"></button>').join('') + '</div>'
-    + '<div class="row" style="gap:4px;flex-wrap:nowrap"><button class="nchip fmt" data-a="fsz" data-v="-1" aria-label="글자 작게">가<small>−</small></button><button class="nchip fmt" data-a="fsz" data-v="1" aria-label="글자 크게" style="font-size:16px">가<small>+</small></button></div></div></div>'
+    + '<div class="row" style="gap:4px;flex-wrap:nowrap"><button class="nchip fmt" data-a="fsz" data-v="-1" aria-label="글자 작게">가<small>−</small></button><button class="nchip fmt" data-a="fsz" data-v="1" aria-label="글자 크게" style="font-size:calc(14.5px*var(--fz,1))">가<small>+</small></button></div></div></div>'
     + '<div class="sbody" style="gap:12px;padding-top:10px" id="kBody"><div class="npaper">'
     + '<div class="nhead"><span class="nstamp" id="kStamp">' + esc(f.due ? koD(pymd(f.due)) : '날짜 없음') + '</span><span class="nline"></span></div>'
     + '<input class="ntitle" id="kTitle" value="' + esc(f.title) + '" autocomplete="off" aria-label="할 일">'
     + '<div id="kDueRow">' + dueRow() + '</div>'
     + '<div class="nmemo" id="kNotes" contenteditable="true" role="textbox" aria-multiline="true" aria-label="메모" data-ph="여기에 메모를 끄적여 보세요…">' + noteToHtml(x.notes) + '</div>'
     + '</div><div class="row" style="justify-content:center;padding:4px 0 8px"><button class="obtn" data-a="kdel" id="kDel" style="min-width:140px">삭제</button></div>'
-    + '<p class="note" style="text-align:center;font-size:12px">굵게·밑줄·잉크 색은 구글 Tasks에 **굵게**, __밑줄__, [[금:글자]] 같은 표시로 저장됩니다.</p></div>';
+    + '<p class="note" style="text-align:center;font-size:calc(11px*var(--fz,1))">굵게·밑줄·잉크 색은 구글 Tasks에 **굵게**, __밑줄__, [[금:글자]] 같은 표시로 저장됩니다.</p></div>';
   const restyle = () => {
     loadFont(S.noteFont);
     const ta = sh.querySelector('#kNotes'), ti = sh.querySelector('#kTitle');
@@ -1118,7 +1119,7 @@ function drawGantt() {
     const sp = P.find(p => p.id === G.sel);
     if (sp) {
       const dn = sp.phases.filter(x => x.done).length, pct = Math.round(dn / sp.phases.length * 100);
-      h += '<section class="gdet"><div style="display:flex;align-items:center;gap:10px"><span style="width:12px;height:40px;border-radius:6px;background:linear-gradient(180deg,' + sp.color + ',' + sp.color + 'A0);box-shadow:0 0 10px ' + sp.color + '66"></span><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><h3 class="serif" style="margin:0;font-size:18px;color:var(--goldL)">' + esc(sp.name) + '</h3><span class="lab">' + md(sp.s) + ' – ' + md(new Date(sp.e.getTime() - 864e5)) + ' · ' + esc((st.calMap[sp.calId] || {}).name || '') + '</span></div><span class="serif goldtext" style="font-size:26px">' + pct + '%</span></div>'
+      h += '<section class="gdet"><div style="display:flex;align-items:center;gap:10px"><span style="width:12px;height:40px;border-radius:6px;background:linear-gradient(180deg,' + sp.color + ',' + sp.color + 'A0);box-shadow:0 0 10px ' + sp.color + '66"></span><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><h3 class="serif" style="margin:0;font-size:calc(17px*var(--fz,1));color:var(--goldL)">' + esc(sp.name) + '</h3><span class="lab">' + md(sp.s) + ' – ' + md(new Date(sp.e.getTime() - 864e5)) + ' · ' + esc((st.calMap[sp.calId] || {}).name || '') + '</span></div><span class="serif goldtext" style="font-size:calc(26px*var(--fz,1))">' + pct + '%</span></div>'
         + '<div class="prog" style="margin:0"><div class="b"><i style="width:' + pct + '%"></i></div></div><div class="tlist" style="background:transparent;border:none">'
         + sp.phases.map(ph => { const now = !ph.done && ph.s <= today && today < ph.e; return '<div class="trow' + (ph.done ? ' done' : '') + '">' + '<i class="shine"></i>' + ckHTML(ph.pname + ' 완료', 'data-gph="' + esc(ph.calId + '|' + ph.id) + '"' + (ph.done ? ' checked' : '')) + '<div class="tmain"><span class="ttl">' + esc(ph.pname) + '<i class="strike"></i></span><span class="tmeta">' + md(ph.s) + ' – ' + md(new Date(ph.e.getTime() - 864e5)) + '</span></div>' + (now ? '<span class="tside" style="border-color:#8E6B3A">진행 중</span>' : '') + '</div>'; }).join('')
         + '</div><div class="row" style="gap:8px"><button class="obtn" data-gedit="' + esc(sp.id) + '" style="flex:2;height:46px;border-color:#8E6B3A;color:var(--goldL)">계획 수정</button><button class="obtn" data-gdel="' + esc(sp.id) + '" style="flex:1;height:46px">계획 삭제</button></div><p class="note">단계마다 구글 캘린더 <b>' + esc((st.calMap[sp.calId] || {}).name || '') + '</b>에 여러 날 종일 일정으로 저장되어 있습니다.</p></section>';
@@ -1147,7 +1148,7 @@ function openPlan(P) {
     + sec('단계', f.phases.map((p, i) => '<div class="box" style="padding:10px 12px;gap:8px"><div class="row" style="flex-wrap:nowrap"><input class="inp" data-pi="' + i + '" data-pf="name" placeholder="' + (i + 1) + '단계 이름" value="' + esc(p.name) + '" style="flex:1">' + (f.phases.length > 1 ? '<button class="ibtn" data-a="prm" data-v="' + i + '" aria-label="단계 빼기">' + ICON.x + '</button>' : '') + '</div><div class="row" style="flex-wrap:nowrap"><input type="date" class="inp" data-pi="' + i + '" data-pf="start" value="' + p.start + '" style="flex:1"><span class="lab">~</span><input type="date" class="inp" data-pi="' + i + '" data-pf="end" value="' + p.end + '" style="flex:1"></div></div>').join('') + '<button class="pillb dash" data-a="padd" style="align-self:flex-start">+ 단계 추가</button>')
     + '<p class="note">단계마다 고른 캘린더에 여러 날 종일 일정으로 저장됩니다. 구글 캘린더에는 막대로 보이고, 이 앱의 캘린더 화면에서는 설정에서 켤 때만 보입니다.</p>';
   const redraw = () => { const b = sh.querySelector('.sbody'), y = b.scrollTop; b.innerHTML = body(); b.scrollTop = y; };
-  sh = openSheet('<div class="shead"><button class="tbtn" data-a="cancel">취소</button><h2 class="serif goldtext" style="font-size:20px">' + (P ? '계획 수정' : '새 계획') + '</h2><button class="gbtn" data-a="save">저장</button></div><div class="sbody">' + body() + '</div>', async (a, t2) => {
+  sh = openSheet('<div class="shead"><button class="tbtn" data-a="cancel">취소</button><h2 class="serif goldtext" style="font-size:calc(17px*var(--fz,1))">' + (P ? '계획 수정' : '새 계획') + '</h2><button class="gbtn" data-a="save">저장</button></div><div class="sbody">' + body() + '</div>', async (a, t2) => {
     const v = t2.dataset.v;
     if (a === 'cancel') { closeSheet(); return; }
     if (a === 'grp') f.group = v;
@@ -1188,15 +1189,18 @@ function openSettings() {
     + '<label style="display:flex;flex-direction:column;gap:6px"><span class="lab">비밀 키</span><input class="inp" id="sKey" type="password" placeholder="setup 실행 로그에 나온 키" value="' + esc(S.key) + '" autocomplete="off" autocapitalize="off"></label>'
     + '<div class="row"><button class="gbtn" data-a="test" style="flex:1;height:46px">저장하고 연결 확인</button>' + (S.url ? '<button class="obtn" data-a="unlink" style="height:46px">연결 해제</button>' : '') + '</div>'
     + '<p class="note">주소와 키는 이 기기에만 저장됩니다. 비워 두면 예시 데이터로 보여 줍니다.</p>' + (demo() ? '' : '<button class="obtn" data-a="refresh" style="align-self:flex-start">캘린더 목록·색 새로 불러오기</button>'))
-    + sec('월간 화면에서 숨길 캘린더', '<p class="note">숨겨도 주간과 하루 시간표에는 그대로 보입니다.</p><div class="box">' + st.cals.map(c => '<div class="boxrow"><i style="width:10px;height:10px;border-radius:5px;background:' + c.color + '"></i><span style="flex:1;font-size:15px">' + esc(c.name) + '</span><button class="switch' + (S.hiddenMonth.includes(c.id) ? '' : ' on') + '" role="switch" aria-checked="' + !S.hiddenMonth.includes(c.id) + '" aria-label="' + esc(c.name) + ' 월간 표시" data-a="hm" data-id="' + esc(c.id) + '"><i></i></button></div>').join('') + '</div>')
-    + sec('표시', '<div class="box"><div class="boxrow" style="justify-content:space-between"><span style="font-size:15px">대괄호 태그 숨기기<br><span class="lab">[Golf]골프하자 → 골프하자</span></span><button class="switch' + (S.hideTags ? ' on' : '') + '" role="switch" aria-checked="' + S.hideTags + '" aria-label="대괄호 태그 숨기기" data-a="tags"><i></i></button></div><div class="boxrow" style="justify-content:space-between"><span style="font-size:15px">캘린더에 계획 막대 보기<br><span class="lab">간트의 장기 계획을 월간·주간에도 표시</span></span><button class="switch' + (S.showPlans ? ' on' : '') + '" role="switch" aria-checked="' + S.showPlans + '" aria-label="캘린더에 계획 막대 보기" data-a="plans"><i></i></button></div></div>')
+    + sec('월간 화면에서 숨길 캘린더', '<p class="note">숨겨도 주간과 하루 시간표에는 그대로 보입니다.</p><div class="box">' + st.cals.map(c => '<div class="boxrow"><i style="width:10px;height:10px;border-radius:5px;background:' + c.color + '"></i><span style="flex:1;font-size:calc(14px*var(--fz,1))">' + esc(c.name) + '</span><button class="switch' + (S.hiddenMonth.includes(c.id) ? '' : ' on') + '" role="switch" aria-checked="' + !S.hiddenMonth.includes(c.id) + '" aria-label="' + esc(c.name) + ' 월간 표시" data-a="hm" data-id="' + esc(c.id) + '"><i></i></button></div>').join('') + '</div>')
+    + sec('표시', '<div class="box"><div class="boxrow" style="justify-content:space-between"><span style="font-size:calc(14px*var(--fz,1))">대괄호 태그 숨기기<br><span class="lab">[Golf]골프하자 → 골프하자</span></span><button class="switch' + (S.hideTags ? ' on' : '') + '" role="switch" aria-checked="' + S.hideTags + '" aria-label="대괄호 태그 숨기기" data-a="tags"><i></i></button></div><div class="boxrow" style="justify-content:space-between"><span style="font-size:calc(14px*var(--fz,1))">캘린더에 계획 막대 보기<br><span class="lab">간트의 장기 계획을 월간·주간에도 표시</span></span><button class="switch' + (S.showPlans ? ' on' : '') + '" role="switch" aria-checked="' + S.showPlans + '" aria-label="캘린더에 계획 막대 보기" data-a="plans"><i></i></button></div></div>')
+    + sec('글자 크기', '<div class="row" style="gap:8px">' + [[0.92, '작게'], [1, '보통'], [1.1, '크게']].map(z => '<button class="nchip' + ((S.fz || 1) === z[0] ? ' on' : '') + '" data-a="fz" data-v="' + z[0] + '" style="flex:1;justify-content:center">' + z[1] + '</button>').join('') + '</div><p class="note">앱 전체 글자에 적용됩니다. 메모장 글씨는 메모 화면에서 따로 조절합니다.</p>')
+    + '<p class="note">화면 ' + screen.width + '×' + screen.height + ' · 앱 ' + innerWidth + '×' + innerHeight + ' · 보정 ' + (getComputedStyle(document.documentElement).getPropertyValue('--gap').trim() || '0px') + '</p>'
     + '<p class="note">화면 버전 ' + APP_V + ' · 데이터 창구 v' + (S.sv || '?') + ' · 테마 다크 레더 · 테마 바꾸기와 PC 넓은 배치는 다음 단계에서 열립니다.</p>';
   let sh;
   const redraw = () => { const b = sh.querySelector('.sbody'), y = b.scrollTop; b.innerHTML = body(); b.scrollTop = y; };
   const reset = () => { M.months = {}; M.ts = {}; T.lists = null; T.tasks = []; T.ts = 0; G.phases = null; G.ts = 0; loadLocal(); const tc = store.get('tasks'); if (tc) { T.lists = tc.lists; T.tasks = tc.tasks; } G.phases = store.get('gantt'); };
-  sh = openSheet('<div class="shead"><span style="width:52px"></span><h2 class="serif goldtext" style="font-size:20px">설정</h2><button class="tbtn" data-a="close">닫기</button></div><div class="sbody">' + body() + '</div>', async (a, t) => {
+  sh = openSheet('<div class="shead"><span style="width:52px"></span><h2 class="serif goldtext" style="font-size:calc(17px*var(--fz,1))">설정</h2><button class="tbtn" data-a="close">닫기</button></div><div class="sbody">' + body() + '</div>', async (a, t) => {
     if (a === 'close') { closeSheet(); return; }
     if (a === 'hm') { const id = t.dataset.id; S.hiddenMonth = S.hiddenMonth.includes(id) ? S.hiddenMonth.filter(x => x !== id) : S.hiddenMonth.concat([id]); save(); redraw(); render(); }
+    if (a === 'fz') { S.fz = +t.dataset.v; save(); document.documentElement.style.setProperty('--fz', S.fz); redraw(); render(); }
     if (a === 'tags') { S.hideTags = !S.hideTags; save(); redraw(); render(); }
     if (a === 'plans') { S.showPlans = !S.showPlans; save(); redraw(); render(); }
     if (a === 'refresh') { try { const r = await api('calendars', { fresh: '1' }); setCals(r.calendars); M.months = {}; M.ts = {}; toast('새로 불러왔습니다'); redraw(); render(); } catch (err) { toast(err.message); } }
@@ -1249,7 +1253,7 @@ $('#hAlt').addEventListener('click', e => { const z = e.target.closest('[data-zo
 $('#hAlt').addEventListener('change', e => { if (e.target.id === 'listSel') { S.listId = e.target.value; save(); drawTasks(); } });
 $('#bannerSlot').addEventListener('click', e => { const g = e.target.closest('[data-go]'); if (!g) return; if (g.dataset.go === 'upd') openUpd(); else openSettings(); });
 function openUpd() {
-  openSheet('<div class="shead"><span style="width:52px"></span><h2 class="serif goldtext" style="font-size:20px">마지막 수동 업데이트</h2><button class="tbtn" data-a="close">닫기</button></div><div class="sbody">'
+  openSheet('<div class="shead"><span style="width:52px"></span><h2 class="serif goldtext" style="font-size:calc(17px*var(--fz,1))">마지막 수동 업데이트</h2><button class="tbtn" data-a="close">닫기</button></div><div class="sbody">'
     + '<p class="note">이번 한 번만 PC에서 해 주시면, 그다음부터는 화면 업데이트가 자동으로 적용됩니다.</p>'
     + '<div class="box" style="padding:14px;gap:10px"><p class="note" style="color:var(--ink)">1. script.google.com에서 이 앱의 프로젝트를 엽니다.<br>2. Code.gs와 appsscript.json을 GitHub의 apps-script 폴더 내용으로 바꿉니다.<br>&nbsp;&nbsp;&nbsp;github.com/Kangkong00/my-calendar/tree/main/apps-script<br>3. setup 실행 → 새 권한 허용<br>4. 배포 → 배포 관리 → 연필 → 버전: 새 버전 → 배포</p></div>'
     + '<p class="note">주소와 비밀 키는 그대로입니다.</p></div>', a => { if (a === 'close') closeSheet(); });
