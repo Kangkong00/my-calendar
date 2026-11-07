@@ -14,7 +14,19 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" type="image/png" href="icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700;800&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<link rel="apple-touch-startup-image" media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="splash/1320x2868.png">
+<link rel="apple-touch-startup-image" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="splash/1290x2796.png">
+<link rel="apple-touch-startup-image" media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="splash/1206x2622.png">
+<link rel="apple-touch-startup-image" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="splash/1179x2556.png">
+<link rel="apple-touch-startup-image" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="splash/1170x2532.png">
+<link rel="apple-touch-startup-image" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="splash/1284x2778.png">
+<link rel="apple-touch-startup-image" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="splash/1125x2436.png">
+<link rel="apple-touch-startup-image" media="(device-width: 360px) and (device-height: 780px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="splash/1080x2340.png">
+<link rel="apple-touch-startup-image" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="splash/1242x2688.png">
+<link rel="apple-touch-startup-image" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="splash/828x1792.png">
+<link rel="apple-touch-startup-image" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="splash/750x1334.png">
+<link rel="preload" as="image" href="splash/cover.jpg" fetchpriority="high">
+<link rel="stylesheet" media="print" onload="this.media='all'" href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700;800&family=Noto+Sans+KR:wght@400;500;700&display=swap">
 <style>
 :root{
   --bg:#070504; --ink:#EFE3CF; --mut:#A89275; --dim:#7F6B55; --line:#3A2A1E; --line2:#241911; --line3:#1E150F;
@@ -306,9 +318,18 @@ input[type=date].inp{color-scheme:dark;min-width:0}
 .nchip.on{border-color:#C9A46A;color:#140D09;background:var(--gold)}
 .nchip small{font-size:11px}
 .tmemo{font-size:15px;color:#BFA987;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2}
+#cover{position:fixed;inset:0;z-index:9999;perspective:1600px;pointer-events:auto;background:transparent}
+#cover .cv{position:absolute;inset:0;background:#0D0907 radial-gradient(ellipse at 45% 38%,#2A1C12 0%,#120C08 55%,#080504 100%);transform-origin:0 50%;will-change:transform,opacity;box-shadow:12px 0 40px rgba(0,0,0,.7)}
+#cover .cv img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+#cover .cv::after{content:'';position:absolute;inset:0;background:#000;opacity:0;transition:opacity .75s ease-in}
+#cover.open{pointer-events:none}
+#cover.open .cv{transform:rotateY(-105deg);opacity:0;transition:transform .8s cubic-bezier(.55,.05,.35,1),opacity .25s ease-in .55s}
+#cover.open .cv::after{opacity:.6}
+@media (prefers-reduced-motion:reduce){#cover.open .cv{transform:none;transition:opacity .3s}}
 </style>
 </head>
 <body>
+<div id="cover" aria-hidden="true"><div class="cv"><picture><source media="(min-aspect-ratio: 1/2)" srcset="splash/cover-s.jpg"><img src="splash/cover.jpg" alt="" decoding="async"></picture></div></div>
 <div id="app">
   <header>
     <button class="titlebox" id="titleBtn" aria-label="오늘로 이동"><small id="ttlSmall">2026</small><h1 class="serif goldtext" id="ttl">11월</h1></button>
@@ -331,7 +352,7 @@ input[type=date].inp{color-scheme:dark;min-width:0}
 </div>
 <script>
 'use strict';
-const APP_V = '3.8';
+const APP_V = '3.9';
 /* ========== 기본 도구 ========== */
 const $ = s => document.querySelector(s);
 const pad = n => String(n).padStart(2, '0');
@@ -1278,15 +1299,25 @@ async function checkUpdate() {
     if (j.v && j.v !== APP_V && !sheetStack.length) location.replace(location.pathname + '?v=' + encodeURIComponent(j.v));
   } catch (e) {}
 }
+function openCover() {
+  const c = document.getElementById('cover'); if (!c || c.dataset.go) return;
+  c.dataset.go = '1';
+  const wait = Math.max(0, 650 - performance.now());
+  setTimeout(() => requestAnimationFrame(() => {
+    c.classList.add('open');
+    setTimeout(() => c.remove(), 950);
+  }), wait);
+}
 async function boot() {
   checkUpdate();
   loadLocal();
-  render();
+  try { render(); } finally { openCover(); }
   if (!demo()) api('ping').then(r => { const v = r.v || 1; if (v !== S.sv) { S.sv = v; save(); setHeader(); } }).catch(() => {});
   try { const r = await api('calendars'); const changed = JSON.stringify(r.calendars) !== JSON.stringify(st.cals); setCals(r.calendars); if (changed) render(); }
   catch (err) { toast('연결 실패: ' + err.message + ' · 설정을 확인해 주세요'); }
 }
 boot();
+setTimeout(openCover, 4000);
 </script>
 </body>
 </html>

@@ -49,7 +49,7 @@ async def run():
             pg = await ctx.new_page(); errs = []
             pg.on('pageerror', lambda e: errs.append(str(e)))
             await pg.route('**/version.json*', lambda r: r.fulfill(status=404, body=''))
-            await pg.goto(URL); await pg.evaluate('localStorage.clear()'); await pg.reload(); await pg.wait_for_timeout(900)
+            await pg.goto(URL); await pg.evaluate('localStorage.clear()'); await pg.reload(); await pg.wait_for_selector('#cover', state='detached', timeout=5000); await pg.wait_for_timeout(300)
             async def shot(tag):
                 await pg.wait_for_timeout(450)
                 res = await pg.evaluate(CHECK)
