@@ -52,7 +52,9 @@ input::placeholder,textarea::placeholder{color:#8F7A62}
 
 /* header */
 header{padding:calc(var(--sat-top) + 14px) 14px 6px;display:flex;align-items:flex-end;justify-content:space-between;gap:10px}
-.titlebox{display:flex;flex-direction:column;gap:1px;border:none;background:none;padding:0;text-align:left}
+.titlebox{display:flex;flex-direction:column;gap:1px;border:none;background:none;padding:0;text-align:left;flex:1;min-width:0;overflow:hidden}
+.titlebox small,.titlebox h1{white-space:nowrap}
+.hright{flex-shrink:0}
 .titlebox small{font-size:calc(10.5px*var(--fz,1));color:var(--mut);letter-spacing:4px}
 .titlebox h1{margin:0;font-size:calc(26px*var(--fz,1));line-height:1.1;letter-spacing:2px}
 .hright{display:flex;align-items:center;gap:6px}
@@ -319,6 +321,28 @@ input[type=date].inp{color-scheme:dark;min-width:0}
 .nchip.on{border-color:#C9A46A;color:#140D09;background:var(--gold)}
 .nchip small{font-size:calc(10.5px*var(--fz,1))}
 .tmemo{font-size:calc(14px*var(--fz,1));color:#BFA987;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2}
+.tai{font-size:calc(11px*var(--fz,1));color:#A9D57E;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-top:1px}
+.tai.fresh{animation:inkFade .8s ease both}
+.anbtn{color:var(--goldM)}
+.anstat{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.anstat div{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 6px;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0}
+.anstat b{font-family:'Nanum Myeongjo',serif;font-size:calc(19px*var(--fz,1));color:var(--goldL)}
+.anstat span{font-size:calc(10.5px*var(--fz,1));color:var(--mut)}
+.aibox{background:linear-gradient(180deg,#17200F,#0F140A);border:1px solid #3E5A2A;border-radius:16px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.aih{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.aih>span{display:inline-flex;align-items:center;gap:6px;color:#A9D57E;font-size:calc(12px*var(--fz,1));font-weight:700}
+.aibox p{margin:0;color:#DCE9C8;font-size:calc(13px*var(--fz,1));line-height:1.6}
+.anrow{padding:10px 14px;border-bottom:1px solid var(--line2);display:flex;flex-direction:column;gap:6px}
+.anrow:last-child{border-bottom:none}
+.anl{display:flex;align-items:center;gap:8px;min-width:0}
+.anl i{width:9px;height:9px;border-radius:5px;flex-shrink:0}
+.anl span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:calc(13px*var(--fz,1))}
+.anl b{font-size:calc(13px*var(--fz,1));color:var(--goldL);font-weight:500;white-space:nowrap}
+.anl em{font-style:normal;font-size:calc(10.5px*var(--fz,1));width:40px;text-align:right;color:var(--dim);white-space:nowrap}
+.anl em.up{color:#A9D57E}.anl em.dn{color:var(--sun)}
+.anbar{height:5px;border-radius:3px;background:#1E150F;overflow:hidden}
+.anbar i{display:block;height:100%;border-radius:3px;opacity:.85}
+@media (max-width:370px){header{padding-left:12px;padding-right:10px;gap:6px}.hright{gap:2px}.navarrow{width:30px}.seg button{min-width:38px}.titlebox small{letter-spacing:2px}}
 #cover{position:fixed;inset:0 0 calc(-1*var(--gap,0px)) 0;z-index:9999;perspective:1600px;pointer-events:auto;background:transparent}
 #cover .cv{position:absolute;inset:0;background:#0D0907 radial-gradient(ellipse at 45% 38%,#2A1C12 0%,#120C08 55%,#080504 100%);transform-origin:0 50%;will-change:transform,opacity;box-shadow:12px 0 40px rgba(0,0,0,.7)}
 #cover .cv img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
@@ -335,6 +359,7 @@ input[type=date].inp{color-scheme:dark;min-width:0}
   <header>
     <button class="titlebox" id="titleBtn" aria-label="오늘로 이동"><small id="ttlSmall">2026</small><h1 class="serif goldtext" id="ttl">11월</h1></button>
     <div class="hright" id="hCal">
+      <button class="navarrow anbtn" id="anBtn" aria-label="분석"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></button>
       <button class="navarrow" id="prevBtn" aria-label="이전"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></button>
       <button class="navarrow" id="nextBtn" aria-label="다음"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></button>
       <div class="seg" role="tablist" aria-label="보기"><button id="vMonth" class="on" role="tab">월</button><button id="vWeek" role="tab">주</button></div>
@@ -353,7 +378,7 @@ input[type=date].inp{color-scheme:dark;min-width:0}
 </div>
 <script>
 'use strict';
-const APP_V = '3.11';
+const APP_V = '3.12';
 /* ========== 기본 도구 ========== */
 const $ = s => document.querySelector(s);
 const pad = n => String(n).padStart(2, '0');
@@ -376,7 +401,9 @@ const ICON = {
   x: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
   plus: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
   chk: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#140D09" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
-  chev: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>'
+  chev: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>',
+  chevL: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg>',
+  spark: '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.2 6.3L20.5 10l-6.3 2.2L12 18.5l-2.2-6.3L3.5 10l6.3-1.7z"/><path d="M19 15l.9 2.4 2.4.9-2.4.9L19 21.6l-.9-2.4-2.4-.9 2.4-.9z" opacity=".7"/></svg>'
 };
 const ckHTML = (label, attrs) => '<label class="ck"><input type="checkbox" aria-label="' + esc(label) + '" ' + attrs + '><span class="ckbox">' + ICON.chk + '</span><i class="ring"></i><i class="sp s1"></i><i class="sp s2"></i><i class="sp s3"></i><i class="sp s4"></i></label>';
 
@@ -531,15 +558,23 @@ function setHeader() {
   $('#hCal').style.display = cal ? '' : 'none'; $('#hAlt').style.display = cal ? 'none' : '';
   if (cal) {
     if (st.view === 'month') { $('#ttlSmall').textContent = c.getFullYear(); $('#ttl').textContent = (c.getMonth() + 1) + '월'; }
-    else { const a = addD(c, -c.getDay()), b = addD(a, 6); $('#ttlSmall').textContent = a.getFullYear() + ' · ' + (a.getMonth() + 1) + '월'; $('#ttl').textContent = a.getDate() + '일 – ' + (b.getMonth() !== a.getMonth() ? (b.getMonth() + 1) + '월 ' : '') + b.getDate() + '일'; }
+    else { const a = addD(c, -c.getDay()), b = addD(a, 6), cm = b.getMonth() !== a.getMonth(); $('#ttlSmall').textContent = (b.getFullYear() !== a.getFullYear() ? a.getFullYear() + '–' + String(b.getFullYear()).slice(2) : a.getFullYear()) + ' · ' + (a.getMonth() + 1) + (cm ? '–' + (b.getMonth() + 1) : '') + '월'; $('#ttl').textContent = a.getDate() + '일 – ' + b.getDate() + '일'; }
     $('#vMonth').classList.toggle('on', st.view === 'month'); $('#vWeek').classList.toggle('on', st.view === 'week');
   } else if (st.tab === 'task') { $('#ttlSmall').textContent = 'TASKS'; $('#ttl').textContent = '할 일'; }
   else { $('#ttlSmall').textContent = 'LONG-TERM'; $('#ttl').textContent = '계획'; }
   ['nCal', 'nTask', 'nGantt'].forEach((id, i) => $('#' + id).classList.toggle('on', ['cal', 'task', 'gantt'][i] === st.tab));
   $('#bannerSlot').innerHTML = demo() ? '<div class="banner"><span>예시 데이터로 보는 중입니다</span><button data-go="settings">구글 캘린더 연결</button></div>' : (S.sv && S.sv < 3 ? '<div class="banner"><span>데이터 창구 업데이트가 한 번 필요해요</span><button data-go="upd">방법 보기</button></div>' : '');
 }
+function fitTitle() {
+  const h = $('#ttl'), box = $('#titleBtn'); if (!h || !box) return;
+  h.style.fontSize = ''; h.style.letterSpacing = '';
+  let f = parseFloat(getComputedStyle(h).fontSize), n = 0;
+  while (h.scrollWidth > box.clientWidth + 0.5 && f > 15 && n++ < 20) { f -= 1; h.style.fontSize = f + 'px'; h.style.letterSpacing = '1px'; }
+  const sm = $('#ttlSmall'); sm.style.letterSpacing = ''; if (sm.scrollWidth > box.clientWidth + 0.5) sm.style.letterSpacing = '0.5px';
+}
+addEventListener('resize', () => fitTitle());
 function render(dir) {
-  setHeader();
+  setHeader(); fitTitle();
   if (st.tab === 'cal') return st.view === 'month' ? renderMonth(dir) : renderWeek(dir);
   if (st.tab === 'task') return renderTasks();
   return renderGantt();
@@ -925,8 +960,8 @@ function drawTasks() {
   const doneOld = mine.filter(x => x.done && x.due !== today);
   const tot = tdy.length, dn = tdy.filter(x => x.done).length, pct = tot ? Math.round(dn / tot * 100) : 0;
   const dl = s => { const d = pymd(s); return koD(d); };
-  const row = (x, kind) => { const lt = !x.done && x.due && x.due < today; const meta = [lt ? dl(x.due) + ' 까지였음' : '', kind === 'up' ? dl(x.due) : '', subs(x.id) ? '하위 ' + subs(x.id) + '개' : ''].filter(Boolean).join(' · '); const memo = plainNote(x.notes).split('\n').find(l => l.trim()) || '';
-    return '<div class="trow' + (x.done ? ' done' : '') + (lt ? ' late' : '') + '" data-tid="' + esc(x.id) + '"><i class="shine"></i>' + ckHTML(x.title + ' 완료', 'data-tk="' + esc(x.id) + '"' + (x.done ? ' checked' : '')) + '<div class="tmain"><span class="ttl">' + esc(x.title) + '<i class="strike"></i></span>' + (meta ? '<span class="tmeta">' + esc(meta) + '</span>' : '') + (memo ? '<span class="tmemo" style="font-family:' + NF(S.noteFont || 'pen')[2] + '">' + esc(memo) + '</span>' : '') + '</div>' + (lt ? '<button class="tside" data-tt="' + esc(x.id) + '">오늘로</button>' : '') + '</div>'; };
+  const row = (x, kind) => { const lt = !x.done && x.due && x.due < today; const meta = [lt ? dl(x.due) + ' 까지였음' : '', kind === 'up' ? dl(x.due) : '', subs(x.id) ? '하위 ' + subs(x.id) + '개' : ''].filter(Boolean).join(' · '); const memo = plainNote(x.notes).split('\n').find(l => l.trim()) || '', tip = tipFor(x);
+    return '<div class="trow' + (x.done ? ' done' : '') + (lt ? ' late' : '') + '" data-tid="' + esc(x.id) + '"><i class="shine"></i>' + ckHTML(x.title + ' 완료', 'data-tk="' + esc(x.id) + '"' + (x.done ? ' checked' : '')) + '<div class="tmain"><span class="ttl">' + esc(x.title) + '<i class="strike"></i></span>' + (meta ? '<span class="tmeta">' + esc(meta) + '</span>' : '') + (memo ? '<span class="tmemo" style="font-family:' + NF(S.noteFont || 'pen')[2] + '">' + esc(memo) + '</span>' : '') + (tip ? '<span class="tai">' + esc(tip) + '</span>' : '') + '</div>' + (lt ? '<button class="tside" data-tt="' + esc(x.id) + '">오늘로</button>' : '') + '</div>'; };
   const grp = (title, cls, items, kind, extra) => '<div class="tgroup"><div class="tgh"><h3 class="serif ' + cls + '">' + title + '<small>' + items.length + '개</small></h3>' + (extra || '') + '</div><div class="tlist">' + (items.length ? items.map(x => row(x, kind)).join('') : '<div class="note" style="padding:14px;text-align:center">비어 있어요</div>') + '</div></div>';
   const W = [['today', '오늘'], ['tomorrow', '내일'], ['nextmon', '다음 주 월'], ['none', '날짜 없음']];
   let h = '<div class="scroller" id="tscroll"><div class="prog"><div class="t"><span>오늘 ' + dn + ' / ' + tot + ' 완료</span><span>' + pct + '%</span></div><div class="b"><i style="width:' + pct + '%"></i></div></div>'
@@ -1184,6 +1219,166 @@ function openPlan(P) {
 }
 
 /* ========== 설정 ========== */
+/* ========== AI 코치 (Gemini 무료 등급 · 키는 이 기기에만) ========== */
+const AI = { coach: '', q: [], busy: false, pauseTill: 0, store: null };
+const COACH_FALLBACK = '당신은 따뜻하지만 현실적인 라이프 코치입니다. 한국어 해요체로 답합니다. 받은 숫자만 사용하고 지어내지 않습니다.';
+const aiStore = () => { if (!AI.store) { try { AI.store = JSON.parse(localStorage.getItem('cal.ai') || '{}'); } catch (e) { AI.store = {}; } AI.store.tips = AI.store.tips || {}; AI.store.an = AI.store.an || {}; } return AI.store; };
+const aiSave = () => { try { const s = aiStore(), k = Object.keys(s.tips); if (k.length > 400) k.slice(0, k.length - 400).forEach(x => delete s.tips[x]); localStorage.setItem('cal.ai', JSON.stringify(s)); } catch (e) {} };
+const hsh = t => { let h = 5381; for (let i = 0; i < t.length; i++) h = (h * 33 + t.charCodeAt(i)) >>> 0; return h.toString(36); };
+const aiOn = () => !!S.aiKey;
+fetch('coach.md', { cache: 'no-cache' }).then(r => r.ok ? r.text() : '').then(t => { AI.coach = t; }).catch(() => {});
+
+const AI_MODELS = ['gemini-flash-lite-latest', 'gemini-2.5-flash-lite', 'gemini-flash-latest', 'gemini-2.5-flash'];
+async function gemini(prompt, maxTok) {
+  if (!S.aiKey) throw new Error('키 없음');
+  if (Date.now() < AI.pauseTill) throw new Error('잠시 쉬는 중');
+  const models = S.aiModel ? [S.aiModel].concat(AI_MODELS.filter(m => m !== S.aiModel)) : AI_MODELS;
+  let last = '';
+  for (const m of models) {
+    const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + m + ':generateContent?key=' + encodeURIComponent(S.aiKey), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ systemInstruction: { parts: [{ text: AI.coach || COACH_FALLBACK }] }, contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { temperature: 0.8, maxOutputTokens: maxTok || 400 } })
+    });
+    let j = {}; try { j = await r.json(); } catch (e) {}
+    if (r.ok) {
+      const t = (((j.candidates || [])[0] || {}).content || {}).parts || [];
+      const txt = t.map(p => p.text || '').join('').trim();
+      if (!txt) throw new Error('빈 답변');
+      if (S.aiModel !== m) { S.aiModel = m; save(); }
+      return txt;
+    }
+    const msg = (j.error && j.error.message) || ('HTTP ' + r.status);
+    if (r.status === 429) { AI.pauseTill = Date.now() + 60000; throw new Error('무료 사용량을 잠시 넘었어요. 1분 뒤 다시 됩니다'); }
+    if (r.status === 400 && /API key|API_KEY/i.test(msg)) throw new Error('키가 올바르지 않아요');
+    if (r.status === 403) throw new Error('키 권한이 없어요: ' + msg);
+    last = msg; // 모델 없음(404) 등 → 다음 모델
+  }
+  throw new Error(last || '연결 실패');
+}
+
+/* --- 예비 코치: 키가 없거나 연결이 안 될 때 --- */
+const TIP_RULES = [
+  [/독서|책|읽기|독후감/, ['책을 먼저 펴야 다음이 시작돼요. 10쪽만 읽어 봐요.', '오늘은 딱 한 챕터만, 지금 펴 볼까요?']],
+  [/운동|헬스|러닝|달리|걷기|골프|스트레칭|요가|수영/, ['시작은 의지가 아니라 신발 끈이에요. 지금 준비해요.', '10분만 해도 안 한 날보다 훨씬 나아요.']],
+  [/보고|보고서|문서|작성|기안|ppt|PPT|자료/, ['빈 문서가 제일 무거워요. 제목 한 줄부터 써 봐요.', '목차 세 줄만 먼저 적으면 절반은 끝나요.']],
+  [/공부|시험|기출|암기|강의|문제|기사/, ['딱 한 문제만 풀어 봐요. 시작하면 이어져요.', '25분 타이머 하나 켜고 바로 들어가요.']],
+  [/점검|확인|검토|체크|순회/, ['확인은 미룰수록 커져요. 지금 5분만 봐요.', '체크리스트 첫 칸부터 바로 가 봐요.']],
+  [/연락|전화|메일|문자|답장|카톡/, ['한 줄이면 충분해요. 지금 보내면 마음이 가벼워져요.']],
+  [/청소|빨래|설거지|정리|분리수거/, ['딱 한 구역만 정해서 지금 시작해요.']],
+  [/구매|주문|장보기|사기|예약/, ['미루면 잊어요. 지금 장바구니에 담아 둬요.']],
+  [/계약|발주|업체|견적/, ['담당자에게 첫 연락부터 넣어 두면 일이 굴러가요.']]
+];
+function ruleTip(x) {
+  const t = (x.title || '') + ' ' + plainNote(x.notes || ''), n = parseInt(hsh(t), 36);
+  const today = ymd(sod(new Date()));
+  if (x.due && x.due < today) return ['미뤄진 만큼 가볍게, 오늘 첫 단추만 끼워요.', '오래 묵힐수록 무거워져요. 5분만 손대 봐요.', '오늘 끝내면 내일이 가벼워져요. 지금 시작해요.'][n % 3];
+  for (const r of TIP_RULES) if (r[0].test(t)) return r[1][n % r[1].length];
+  return plainNote(x.notes || '').trim() ? '메모까지 적어 두셨으니 반은 했어요. 첫 단계만 시작해요.' : '작게 쪼개서 첫 걸음만 떼어 봐요.';
+}
+const tipKey = x => hsh((x.title || '') + '\n' + plainNote(x.notes || ''));
+function tipFor(x) {
+  if (S.aiTip === false || x.done) return '';
+  const c = aiStore().tips[tipKey(x)];
+  if (c && (c.src === 'ai' || !aiOn())) return c.t;
+  if (aiOn()) aiQueue(x);
+  return c ? c.t : ruleTip(x);
+}
+function aiQueue(x) { const k = tipKey(x); if (AI.q.some(q => q.k === k)) return; AI.q.push({ k, x }); aiPump(); }
+async function aiPump() {
+  if (AI.busy || !AI.q.length || !aiOn()) return;
+  if (Date.now() < AI.pauseTill) { setTimeout(aiPump, AI.pauseTill - Date.now() + 500); return; }
+  AI.busy = true;
+  const { k, x } = AI.q.shift();
+  try {
+    const memo = plainNote(x.notes || '').trim().slice(0, 400);
+    let t = await gemini('[할 일 한 줄 메시지]\n제목: ' + x.title + '\n메모: ' + (memo || '(없음)') + '\n마감: ' + (x.due || '없음') + '\n\n규칙대로 한 문장만 답하세요.', 200);
+    t = t.split('\n').map(s => s.trim()).filter(Boolean)[0] || '';
+    t = t.replace(/^["'“”‘’\-•\s]+|["'“”‘’\s]+$/g, '').slice(0, 60);
+    if (t) { aiStore().tips[k] = { t, src: 'ai' }; aiSave(); document.querySelectorAll('.trow[data-tid="' + CSS.escape(x.id) + '"] .tai').forEach(el => { el.textContent = t; el.classList.add('fresh'); }); }
+  } catch (e) { if (/키/.test(e.message)) AI.q = []; }
+  AI.busy = false;
+  setTimeout(aiPump, 4500); // 무료 등급 분당 요청 한도 안쪽으로
+}
+
+/* --- 주간·월간 분석 --- */
+function periodOf(kind, off) {
+  const c = st.cur;
+  if (kind === 'week') { const a = addD(sod(c), -c.getDay() + off * 7); return { s: a, e: addD(a, 7), label: (a.getMonth() + 1) + '월 ' + a.getDate() + '일 주간', days: 7 }; }
+  const a = new Date(c.getFullYear(), c.getMonth() + off, 1), b = new Date(a.getFullYear(), a.getMonth() + 1, 1);
+  return { s: a, e: b, label: a.getFullYear() + '년 ' + (a.getMonth() + 1) + '월', days: Math.round((b - a) / 864e5) };
+}
+function statsOf(p) {
+  const evs = fromCache(p.s, p.e), by = {};
+  let n = 0;
+  evs.forEach(x => {
+    n++;
+    const c = st.calMap[x.calId] || {}, k = x.calId;
+    by[k] = by[k] || { name: calLabel(c.name || '기타'), color: c.color || '#8E6B3A', h: 0, n: 0, allDay: 0 };
+    by[k].n++;
+    if (x.allDay) { by[k].allDay++; return; }
+    const s = Math.max(x.s, p.s), e = Math.min(x.e, p.e);
+    if (e > s) by[k].h += (e - s) / 36e5;
+  });
+  const tasks = (T.tasks || []).filter(t => t.due && t.due >= ymd(p.s) && t.due < ymd(p.e));
+  return { n, by, tasks: tasks.length, done: tasks.filter(t => t.done).length };
+}
+const calLabel = s => { const t = String(s), u = t.replace(/^\s*\[[^\]]*\]+\s*/, ''); return ((u && /^\s*\[[^\[]/.test(t) ? u : t).replace(/[\[\]<>]/g, '').trim()) || t; };
+const r1 = v => Math.round(v * 10) / 10;
+function ruleAnalysis(p, cur, prev) {
+  const rows = Object.values(cur.by).filter(r => r.h > 0).sort((a, b) => b.h - a.h);
+  if (!rows.length) return '이 기간에는 시간이 기록된 일정이 없어요. 일정을 시간과 함께 넣어 두면 흐름이 보이기 시작해요.';
+  const out = ['가장 많은 시간을 쓴 건 ' + rows[0].name + '(' + r1(rows[0].h) + '시간)이에요.'];
+  const pk = {}; Object.keys(prev.by).forEach(k => pk[k] = prev.by[k].h);
+  let big = null; Object.keys(cur.by).forEach(k => { const d = cur.by[k].h - (pk[k] || 0); if (!big || Math.abs(d) > Math.abs(big.d)) big = { name: cur.by[k].name, d }; });
+  const sleep = Object.values(cur.by).find(r => /수면|잠|sleep/i.test(r.name));
+  if (sleep && sleep.h > 0) { const avg = sleep.h / p.days; out.push(avg < 6 ? '하루 평균 수면이 ' + r1(avg) + '시간으로 부족해요.' : '하루 평균 ' + r1(avg) + '시간 주무셨어요. 잘 지키고 있어요.'); }
+  else if (big && Math.abs(big.d) >= 1) out.push('지난 기간보다 ' + big.name + ' 시간이 ' + r1(Math.abs(big.d)) + '시간 ' + (big.d > 0 ? '늘었어요.' : '줄었어요.'));
+  if (cur.tasks) out.push('기한이 있던 할 일 ' + cur.tasks + '개 중 ' + cur.done + '개를 끝냈어요.' + (cur.done < cur.tasks ? ' 남은 일은 하나씩 날짜를 다시 잡아 봐요.' : ' 훌륭해요!'));
+  return out.join(' ');
+}
+async function openAnalysis(kind0) {
+  let kind = kind0 || (st.view === 'week' ? 'week' : 'month'), off = 0, sh, txt = '', src = '', busy = false, cur, prev, p;
+  const calc = async () => {
+    p = periodOf(kind, off); const pp = periodOf(kind, off - 1);
+    try { await ensure(pp.s, p.e); } catch (e) {}
+    try { if (!T.lists) await loadTasks(); } catch (e) {}
+    cur = statsOf(p); prev = statsOf(pp);
+    const key = kind + ymd(p.s) + hsh(JSON.stringify([cur, prev]));
+    const c = aiStore().an[key]; txt = c ? c.t : ruleAnalysis(p, cur, prev); src = c ? 'ai' : 'rule';
+    return key;
+  };
+  const body = () => {
+    const rows = Object.keys(cur.by).map(k => Object.assign({ k }, cur.by[k])).sort((a, b) => b.h - a.h || b.n - a.n);
+    const max = Math.max(1, ...rows.map(r => r.h)), tot = rows.reduce((a, r) => a + r.h, 0);
+    let h = '<div class="row" style="gap:8px">' + [['week', '주간'], ['month', '월간']].map(z => '<button class="nchip' + (kind === z[0] ? ' on' : '') + '" data-a="kind" data-v="' + z[0] + '" style="flex:1;justify-content:center">' + z[1] + '</button>').join('') + '</div>'
+      + '<div class="row" style="justify-content:space-between;align-items:center"><button class="navarrow" data-a="prev" aria-label="이전 기간">' + ICON.chevL + '</button><b class="serif goldtext" style="font-size:calc(15px*var(--fz,1))">' + esc(p.label) + '</b><button class="navarrow" data-a="next" aria-label="다음 기간"' + (off >= 0 ? ' disabled style="opacity:.3"' : '') + '>' + ICON.chev + '</button></div>'
+      + '<div class="anstat"><div><b>' + cur.n + '</b><span>일정</span></div><div><b>' + r1(tot) + '</b><span>기록된 시간</span></div><div><b>' + (cur.tasks ? cur.done + '/' + cur.tasks : '–') + '</b><span>할 일 완료</span></div></div>'
+      + '<section class="aibox"><div class="aih"><span>' + ICON.spark + (src === 'ai' ? 'AI 코치' : '코치 메모') + '</span>' + (aiOn() ? '<button class="nchip" data-a="ai"' + (busy ? ' disabled' : '') + '>' + (busy ? '분석 중…' : src === 'ai' ? '다시 분석' : 'AI로 분석') + '</button>' : '') + '</div><p>' + esc(txt) + '</p>' + (aiOn() ? '' : '<p class="note" style="margin:0">설정에서 Gemini 키를 넣으면 AI가 직접 분석해 줘요.</p>') + '</section>'
+      + '<div class="box">' + (rows.length ? rows.map(r => { const pv = (prev.by[r.k] || {}).h || 0, d = r.h - pv; return '<div class="anrow"><div class="anl"><i style="background:' + r.color + '"></i><span>' + esc(r.name) + '</span><b>' + (r.h ? r1(r.h) + '시간' : r.allDay + '일 종일') + '</b>' + (r.h || pv ? '<em class="' + (d > 0 ? 'up' : d < 0 ? 'dn' : '') + '">' + (Math.abs(d) < 0.05 ? '–' : (d > 0 ? '▲' : '▼') + r1(Math.abs(d))) + '</em>' : '<em></em>') + '</div><div class="anbar"><i style="width:' + Math.max(2, r.h / max * 100) + '%;background:' + r.color + '"></i></div></div>'; }).join('') : '<div class="note" style="padding:14px;text-align:center">이 기간 일정이 없어요</div>') + '</div>'
+      + '<p class="note">▲▼는 바로 전 ' + (kind === 'week' ? '주' : '달') + '와 비교한 시간입니다. 종일 일정은 시간에서 빠지고 일수로 셉니다. AI에는 카테고리별 시간 합계만 보내고 일정 제목은 보내지 않아요.</p>';
+    return h;
+  };
+  let key = await calc();
+  const redraw = () => { const b = sh.querySelector('.sbody'); if (b) b.innerHTML = body(); };
+  const runAI = async () => {
+    if (busy || !aiOn()) return; busy = true; redraw();
+    const data = { 기간: p.label, 일수: p.days, 일정수: cur.n, 할일: { 기한있음: cur.tasks, 완료: cur.done },
+      카테고리: Object.values(cur.by).map(r => ({ 이름: r.name, 시간: r1(r.h), 종일일정: r.allDay })),
+      지난기간: Object.values(prev.by).map(r => ({ 이름: r.name, 시간: r1(r.h) })) };
+    try { const t = (await gemini('[' + (kind === 'week' ? '주간' : '월간') + ' 분석]\n다음 데이터만 보고 규칙대로 3문장으로 답하세요.\n' + JSON.stringify(data), 600)).replace(/\n+/g, ' ').trim(); aiStore().an[key] = { t }; aiSave(); txt = t; src = 'ai'; }
+    catch (e) { toast(e.message); }
+    busy = false; redraw();
+  };
+  sh = openSheet('<div class="shead"><span style="width:52px"></span><h2 class="serif goldtext" style="font-size:calc(17px*var(--fz,1))">분석</h2><button class="tbtn" data-a="close">닫기</button></div><div class="sbody">' + body() + '</div>', async (a, t) => {
+    if (a === 'close') { closeSheet(); return; }
+    if (a === 'kind' && t.dataset.v !== kind) { kind = t.dataset.v; off = 0; key = await calc(); redraw(); }
+    if (a === 'prev') { off--; key = await calc(); redraw(); }
+    if (a === 'next' && off < 0) { off++; key = await calc(); redraw(); }
+    if (a === 'ai') runAI();
+  });
+  if (aiOn() && src !== 'ai') runAI();
+}
+
 function openSettings() {
   const body = () => sec('구글 캘린더 연결', '<label style="display:flex;flex-direction:column;gap:6px"><span class="lab">앱스 스크립트 웹앱 주소</span><input class="inp" id="sUrl" placeholder="https://script.google.com/macros/s/…/exec" value="' + esc(S.url) + '" autocomplete="off" autocapitalize="off"></label>'
     + '<label style="display:flex;flex-direction:column;gap:6px"><span class="lab">비밀 키</span><input class="inp" id="sKey" type="password" placeholder="setup 실행 로그에 나온 키" value="' + esc(S.key) + '" autocomplete="off" autocapitalize="off"></label>'
@@ -1191,6 +1386,10 @@ function openSettings() {
     + '<p class="note">주소와 키는 이 기기에만 저장됩니다. 비워 두면 예시 데이터로 보여 줍니다.</p>' + (demo() ? '' : '<button class="obtn" data-a="refresh" style="align-self:flex-start">캘린더 목록·색 새로 불러오기</button>'))
     + sec('월간 화면에서 숨길 캘린더', '<p class="note">숨겨도 주간과 하루 시간표에는 그대로 보입니다.</p><div class="box">' + st.cals.map(c => '<div class="boxrow"><i style="width:10px;height:10px;border-radius:5px;background:' + c.color + '"></i><span style="flex:1;font-size:calc(14px*var(--fz,1))">' + esc(c.name) + '</span><button class="switch' + (S.hiddenMonth.includes(c.id) ? '' : ' on') + '" role="switch" aria-checked="' + !S.hiddenMonth.includes(c.id) + '" aria-label="' + esc(c.name) + ' 월간 표시" data-a="hm" data-id="' + esc(c.id) + '"><i></i></button></div>').join('') + '</div>')
     + sec('표시', '<div class="box"><div class="boxrow" style="justify-content:space-between"><span style="font-size:calc(14px*var(--fz,1))">대괄호 태그 숨기기<br><span class="lab">[Golf]골프하자 → 골프하자</span></span><button class="switch' + (S.hideTags ? ' on' : '') + '" role="switch" aria-checked="' + S.hideTags + '" aria-label="대괄호 태그 숨기기" data-a="tags"><i></i></button></div><div class="boxrow" style="justify-content:space-between"><span style="font-size:calc(14px*var(--fz,1))">캘린더에 계획 막대 보기<br><span class="lab">간트의 장기 계획을 월간·주간에도 표시</span></span><button class="switch' + (S.showPlans ? ' on' : '') + '" role="switch" aria-checked="' + S.showPlans + '" aria-label="캘린더에 계획 막대 보기" data-a="plans"><i></i></button></div></div>')
+    + sec('AI 코치', '<div class="box"><div class="boxrow" style="justify-content:space-between"><span style="font-size:calc(14px*var(--fz,1))">할 일 한 줄 응원<br><span class="lab">할 일 아래 연두색 한 문장</span></span><button class="switch' + (S.aiTip !== false ? ' on' : '') + '" role="switch" aria-checked="' + (S.aiTip !== false) + '" aria-label="할 일 한 줄 응원" data-a="aitip"><i></i></button></div></div>'
+      + '<label style="display:flex;flex-direction:column;gap:6px"><span class="lab">Gemini API 키 (무료)</span><input class="inp" id="sAi" type="password" placeholder="AIza로 시작하는 키" value="' + esc(S.aiKey || '') + '" autocomplete="off" autocapitalize="off" spellcheck="false"></label>'
+      + '<div class="row"><button class="gbtn" data-a="aitest" style="flex:1;height:46px">' + (S.aiKey ? '키 저장하고 다시 확인' : '키 저장하고 확인') + '</button>' + (S.aiKey ? '<button class="obtn" data-a="aioff" style="height:46px">키 지우기</button>' : '') + '</div>'
+      + '<p class="note">' + (S.aiKey ? 'AI 연결됨' + (S.aiModel ? ' · ' + esc(S.aiModel) : '') + '. ' : '키가 없으면 앱에 들어 있는 예비 코치가 대신 답해요. ') + '키는 이 기기에만 저장됩니다. 무료 등급은 보낸 내용이 구글 서비스 개선에 쓰일 수 있어서, 할 일은 제목·메모만, 분석은 카테고리별 시간 합계만 보냅니다. 키 받는 곳: aistudio.google.com/apikey</p>')
     + sec('글자 크기', '<div class="row" style="gap:8px">' + [[0.92, '작게'], [1, '보통'], [1.1, '크게']].map(z => '<button class="nchip' + ((S.fz || 1) === z[0] ? ' on' : '') + '" data-a="fz" data-v="' + z[0] + '" style="flex:1;justify-content:center">' + z[1] + '</button>').join('') + '</div><p class="note">앱 전체 글자에 적용됩니다. 메모장 글씨는 메모 화면에서 따로 조절합니다.</p>')
     + '<p class="note">화면 ' + screen.width + '×' + screen.height + ' · 앱 ' + innerWidth + '×' + innerHeight + ' · 보정 ' + (getComputedStyle(document.documentElement).getPropertyValue('--gap').trim() || '0px') + '</p>'
     + '<p class="note">화면 버전 ' + APP_V + ' · 데이터 창구 v' + (S.sv || '?') + ' · 테마 다크 레더 · 테마 바꾸기와 PC 넓은 배치는 다음 단계에서 열립니다.</p>';
@@ -1200,6 +1399,15 @@ function openSettings() {
   sh = openSheet('<div class="shead"><span style="width:52px"></span><h2 class="serif goldtext" style="font-size:calc(17px*var(--fz,1))">설정</h2><button class="tbtn" data-a="close">닫기</button></div><div class="sbody">' + body() + '</div>', async (a, t) => {
     if (a === 'close') { closeSheet(); return; }
     if (a === 'hm') { const id = t.dataset.id; S.hiddenMonth = S.hiddenMonth.includes(id) ? S.hiddenMonth.filter(x => x !== id) : S.hiddenMonth.concat([id]); save(); redraw(); render(); }
+    if (a === 'aitip') { S.aiTip = S.aiTip === false; save(); redraw(); render(); }
+    if (a === 'aioff') { S.aiKey = ''; S.aiModel = ''; save(); redraw(); render(); toast('키를 지웠어요. 예비 코치로 돌아갑니다'); }
+    if (a === 'aitest') {
+      const k = sh.querySelector('#sAi').value.trim();
+      if (!/^AIza[0-9A-Za-z_\-]{20,}$/.test(k)) { toast('키 모양이 달라요. AIza로 시작하는 키를 붙여 넣어 주세요'); return; }
+      const old = S.aiKey; S.aiKey = k; t.disabled = true; t.textContent = '확인 중';
+      try { const r = await gemini('연결 확인입니다. "좋아요" 한 단어만 답하세요.', 50); save(); AI.pauseTill = 0; aiStore().tips = Object.fromEntries(Object.entries(aiStore().tips).filter(e => e[1].src === 'ai')); aiSave(); toast('AI 연결 완료: ' + r.slice(0, 20)); redraw(); render(); }
+      catch (err) { S.aiKey = old; toast('연결 실패: ' + err.message); t.disabled = false; t.textContent = '키 저장하고 확인'; }
+    }
     if (a === 'fz') { S.fz = +t.dataset.v; save(); document.documentElement.style.setProperty('--fz', S.fz); redraw(); render(); }
     if (a === 'tags') { S.hideTags = !S.hideTags; save(); redraw(); render(); }
     if (a === 'plans') { S.showPlans = !S.showPlans; save(); redraw(); render(); }
@@ -1259,7 +1467,7 @@ function openUpd() {
     + '<p class="note">주소와 비밀 키는 그대로입니다.</p></div>', a => { if (a === 'close') closeSheet(); });
 }
 function move(n) { const c = st.cur; st.cur = st.view === 'month' ? new Date(c.getFullYear(), c.getMonth() + n, 1) : addD(c, n * 7); render(n > 0 ? 'l' : 'r'); }
-$('#prevBtn').onclick = () => move(-1); $('#nextBtn').onclick = () => move(1);
+$('#anBtn').onclick = () => openAnalysis(); $('#prevBtn').onclick = () => move(-1); $('#nextBtn').onclick = () => move(1);
 $('#titleBtn').onclick = () => { if (st.tab !== 'cal') return; st.cur = sod(new Date()); render(); };
 $('#vMonth').onclick = () => { if (st.view === 'month') return; transit('down', () => { st.view = 'month'; S.view = 'month'; save(); render(); }); };
 $('#vWeek').onclick = () => { if (st.view === 'week') return; transit('up', () => { const t = new Date(); st.cur = (t.getMonth() === st.cur.getMonth() && t.getFullYear() === st.cur.getFullYear()) ? sod(t) : new Date(st.cur.getFullYear(), st.cur.getMonth(), 1); st.view = 'week'; S.view = 'week'; save(); render(); }); };

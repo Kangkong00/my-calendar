@@ -85,6 +85,10 @@ async def run():
             await pg.click('[data-gedit]'); await shot('계획수정'); await close_all()
             await pg.click('[data-gnew]'); await shot('새계획'); await close_all()
             await pg.click('#nSet'); await shot('설정'); await close_all()
+            await pg.click('#nCal'); await pg.wait_for_timeout(600); await pg.click('#anBtn'); await pg.wait_for_timeout(900); await shot('분석_월간')
+            await pg.click('[data-a=kind][data-v=week]'); await pg.wait_for_timeout(700); await shot('분석_주간')
+            await pg.click('[data-a=prev]'); await pg.wait_for_timeout(700); await shot('분석_지난주'); await close_all()
+            await pg.click('#vWeek'); await pg.wait_for_timeout(600); await shot('주간_헤더'); await pg.click('#vMonth'); await pg.wait_for_timeout(500)
             report[f'{W}x{H} 스크립트 오류'] = errs
             await ctx.close()
         await b.close()
