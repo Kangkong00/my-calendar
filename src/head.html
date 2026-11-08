@@ -97,6 +97,21 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;position:relative}
 .bar.hol{background:transparent!important;box-shadow:none;color:var(--sun)!important;font-weight:400;padding:0 2px}
 .pills{position:absolute;left:3px;right:3px;display:flex;flex-wrap:wrap;gap:3px;justify-content:center;pointer-events:none}
 .pill{width:13px;height:6px;border-radius:3px;box-shadow:0 1px 2px rgba(0,0,0,.5)}
+/* 할 일 표시 (캘린더↔할 일 연결): 월간 칸 왼쪽 아래, 주간 머리 날짜 오른쪽 위. 금색 = 남은 할 일, 붉은색 = 지난 날짜에 남은 밀린 일 */
+.tdue{position:absolute;left:3px;bottom:3px;display:inline-flex;align-items:center;gap:1px;height:14px;padding:0 3px 0 2px;border-radius:4px;border:1px solid rgba(227,196,142,.55);background:rgba(20,13,9,.85);color:var(--goldL);font-size:calc(9px*var(--fz,1));font-weight:700;line-height:1;pointer-events:none}
+.tdue.late{border-color:rgba(232,149,122,.6);color:var(--sun)}
+.wkh{position:relative}
+.wkh .tdue{left:calc(50% + 6px);bottom:auto;top:13px;min-width:14px;height:14px;padding:0 3px;border-radius:7px;justify-content:center;border:none;background:var(--gold);color:var(--dark);font-size:calc(8.5px*var(--fz,1));box-shadow:0 0 0 1.5px #0E0907}
+.wkh .tdue svg{display:none}
+.wkh .tdue.late{background:var(--sun);color:var(--dark)}
+.daytasks{flex-shrink:0;max-height:32%;overflow-y:auto;border-bottom:1px solid #2A1D15}
+.daytasks:empty{display:none}
+.dthead{display:flex;align-items:baseline;gap:8px;padding:8px 16px 2px}
+.dthead span{font-family:'Nanum Myeongjo',serif;font-weight:800;font-size:calc(13px*var(--fz,1));color:var(--goldL)}
+.dthead em{font-style:normal;font-size:calc(10.5px*var(--fz,1));color:var(--mut)}
+.trow.dt{min-height:46px;padding-left:6px;border-bottom:none}
+.trow.dt .tmain{border:none;background:transparent;text-align:left;color:inherit;padding:8px 12px 8px 0}
+.trow.dt.late .ttl{color:var(--sun)}
 .more{position:absolute;left:0;right:0;bottom:3px;text-align:center;font-size:calc(9.5px*var(--fz,1));color:var(--mut);pointer-events:none}
 
 /* week */

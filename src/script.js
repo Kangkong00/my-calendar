@@ -1,6 +1,6 @@
 <script>
 'use strict';
-const APP_V = '3.16';
+const APP_V = '3.17';
 /* ========== 기본 도구 ========== */
 const $ = s => document.querySelector(s);
 const pad = n => String(n).padStart(2, '0');
@@ -127,7 +127,8 @@ async function api(action, params = {}, post = false) {
 function toast(msg) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 2500); }
 
 /* ========== 일정 데이터: 월 단위 캐시 ========== */
-const st = { view: S.view === 'week' ? 'week' : 'month', tab: ['cal', 'task', 'gantt'].includes(S.tab) ? S.tab : 'cal', cur: sod(new Date()), cals: [], calMap: {} };
+// 앱을 열면 항상 캘린더 월간·이번 달에서 시작 (사용자 확정, v3.17). 마지막 화면은 기억하지 않음.
+const st = { view: 'month', tab: 'cal', cur: sod(new Date()), cals: [], calMap: {} };
 const M = { months: {}, ts: {}, pending: {} };
 const isHol = id => /#holiday@/.test(id || '');
 // 종일 일정이거나 24시간 이상인 일정만 막대. 밤 11시 30분~아침 6시 30분 같은 일정은 시간 일정.
@@ -210,6 +211,7 @@ async function renderMonth(dir) {
   if (!hasAll(start, end)) { try { await ensure(start, end); } catch (err) { toast('불러오기 실패: ' + err.message); } if (st.tab === 'cal' && st.view === 'month') drawMonth(); }
   else refreshStale(start, end, 60000, () => { if (st.tab === 'cal' && st.view === 'month') drawMonth(); });
   const c = st.cur; prefetch(new Date(c.getFullYear(), c.getMonth() - 1, 1), new Date(c.getFullYear(), c.getMonth() + 2, 1));
+  syncCalTasks();
 }
 function prefetch(s, e) { const miss = monthsOf(s, e).filter(k => !M.months[k]); if (miss.length) fetchMonths(miss).catch(() => {}); }
 function drawMonth(dir) {
@@ -222,6 +224,7 @@ function drawMonth(dir) {
   const rowH = (wrap.clientHeight || 600) / nW, CH = 17, GAP = 2, TOP = 26;
   const maxL = Math.max(1, Math.floor((rowH - TOP - 16) / (CH + GAP)));
   const vis = list.filter(x => !S.hiddenMonth.includes(x.calId));
+  const due = dueCount(), tk = ymd(today);
   let html = '';
   for (let w = 0; w < nW; w++) {
     const a = addD(start, w * 7), b = addD(a, 7);
@@ -240,10 +243,10 @@ function drawMonth(dir) {
       const used = lanes.reduce((m, l, k) => l && l[i] ? k + 1 : m, 0);
       const timed = vis.filter(x => !x.bar && same(x.s, d)).sort((p, q) => p.s - q.s);
       const extra = Math.max(0, timed.length - 8) + more[i];
-      const hol = list.some(x => isHol(x.calId) && x.s <= d && x.e > d);
+      const hol = list.some(x => isHol(x.calId) && x.s <= d && x.e > d), td = due[ymd(d)] || 0;
       days += '<button class="mday' + (same(d, today) ? ' today' : '') + (out ? ' out' : '') + (i === 0 ? ' sun' : '') + (i === 6 ? ' sat' : '') + (hol ? ' hol' : '') + '" data-day="' + ymd(d) + '" aria-label="' + koD(d) + '"><span class="mnum">' + d.getDate() + '</span>'
         + '<span class="pills" style="top:' + (TOP + used * (CH + GAP) + 3) + 'px">' + timed.slice(0, 8).map(x => '<i class="pill" style="background:linear-gradient(180deg,' + x.color + ',' + x.color + 'C8)"></i>').join('') + '</span>'
-        + (extra ? '<span class="more">+' + extra + '</span>' : '') + '</button>';
+        + (extra ? '<span class="more">+' + extra + '</span>' : '') + (td ? tdueHTML(td, ymd(d) < tk) : '') + '</button>';
     }
     html += '<div class="mweek"><div class="mdays">' + days + '</div>' + chips + '</div>';
   }
@@ -266,12 +269,14 @@ async function renderWeek(dir) {
   if (!hasAll(a, b)) { try { await ensure(a, b); } catch (err) { toast('불러오기 실패: ' + err.message); } if (st.tab === 'cal' && st.view === 'week') drawWeek(); }
   else refreshStale(a, b, 60000, () => { if (st.tab === 'cal' && st.view === 'week') drawWeek(); });
   prefetch(addD(a, -7), addD(b, 14));
+  syncCalTasks();
 }
 function drawWeek(dir) {
   const a = addD(st.cur, -st.cur.getDay()), b = addD(a, 7), today = sod(new Date());
   const main = $('#main'), list = fromCache(a, b).filter(shown);
+  const due = dueCount();
   let head = '<div class="wkhead"><span></span>';
-  for (let i = 0; i < 7; i++) { const d = addD(a, i); head += '<button class="wkh' + (same(d, today) ? ' today' : '') + (i === 0 ? ' sun' : '') + (i === 6 ? ' sat' : '') + '" data-day="' + ymd(d) + '"><span>' + WD[i] + '</span><b>' + d.getDate() + '</b></button>'; }
+  for (let i = 0; i < 7; i++) { const d = addD(a, i); const k = ymd(d), n = due[k] || 0; head += '<button class="wkh' + (same(d, today) ? ' today' : '') + (i === 0 ? ' sun' : '') + (i === 6 ? ' sat' : '') + '" data-day="' + k + '"' + (n ? ' aria-label="' + koD(d) + ' · 할 일 ' + n + '개"' : '') + '><span>' + WD[i] + '</span><b>' + d.getDate() + '</b>' + (n ? tdueHTML(n, k < ymd(today)) : '') + '</button>'; }
   head += '</div>';
   const lanes = []; let adHtml = '';
   list.filter(x => x.bar).sort((p, q) => (q.e - q.s) - (p.e - p.s)).forEach(x => {
@@ -362,14 +367,39 @@ async function openDay(d) {
   tl += '</div>';
   const html = '<div class="shead"><h2 class="serif">' + koD(d) + (same(d, now) ? ' · 오늘' : '') + '</h2><div class="row"><button class="obtn" data-a="import">일정 가져오기</button><button class="ibtn" data-a="add" aria-label="이 날 새 일정">' + ICON.plus + '</button></div></div>'
     + (allDay.length ? '<div style="display:flex;gap:8px;padding:8px 16px;border-bottom:1px solid #2A1D15;flex-shrink:0"><span class="lab" style="line-height:28px;width:34px;white-space:nowrap;flex-shrink:0">종일</span><div class="adlist">' + allDay.map(x => '<button class="adchip" data-a="ev" data-k="' + esc(x.calId + '|' + x.id + '|' + x.start) + '" style="background:' + (isHol(x.calId) ? 'transparent;border:1px solid #6E5236' : x.color) + ';color:' + (isHol(x.calId) ? 'var(--sun)' : fg(x.color)) + '">' + esc(tagless(x.title)) + '</button>').join('') + '</div></div>' : '')
+    + '<div class="daytasks" data-daytasks="' + ymd(d) + '">' + dayTasksHTML(ymd(d)) + '</div>'
     + '<div class="sbody" style="padding:6px 0 calc(20px + var(--sat-bot));gap:0" id="tlbody">' + (items.length ? '' : '<p class="note" style="padding:10px 16px">일정이 없는 날입니다. 위의 "일정 가져오기"로 어제 일정을 복제할 수 있어요.</p>') + tl + '</div>';
   const sh = openSheet(html, (act, t) => {
     if (act === 'ev') { const ev = items.find(x => (x.calId + '|' + x.id + '|' + x.start) === t.dataset.k); if (ev) openDetail(ev); }
     if (act === 'add') openCreate({ date: d });
     if (act === 'import') openDuplicate({ mode: 'import', target: d });
-  }, { height: '78%' });
+    if (act === 'task') { const x = T.tasks.find(y => y.id === t.dataset.id); if (x && !String(x.id).startsWith('tmp')) openTask(x); }
+  }, { height: '78%', onChange: e => { const t = e.target; if (t.dataset.tk) taskToggle(t.dataset.tk, t); } });
   const body = sh.querySelector('#tlbody'), starts = timed.map(it => it.a).filter(m => m >= 360 && m < 1380);
   body.scrollTop = Math.max(0, ((same(now, d) ? mins(now) - 90 : (starts.length ? Math.min(...starts) - 30 : 420)) / 60) * PX);
+}
+
+/* ========== 캘린더 ↔ 할 일 연결 (v3.17) ==========
+   마감일이 있는 할 일(구글 Tasks)을 월간 칸·주간 머리·하루 시트에 보여 줌. 모든 목록 대상, 끝낸 것은 숨김.
+   지난 날짜에 남은 할 일은 붉은색(밀린 일). 할 일이 바뀌면 drawTasks()가 캘린더 탭에서는 tasksChangedOnCal()로 넘김. */
+const dueOpen = () => (T.tasks || []).filter(x => x.due && !x.done);
+function dueCount() { const m = {}; dueOpen().forEach(x => { m[x.due] = (m[x.due] || 0) + 1; }); return m; }
+const tdueHTML = (n, late) => '<span class="tdue' + (late ? ' late' : '') + '" aria-hidden="true"><svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="1" y="1" width="10" height="10" rx="2.5"/><path d="M3.6 6.2l1.7 1.7 3.2-3.6"/></svg>' + n + '</span>';
+function dayTasksHTML(k) {
+  const xs = (T.tasks || []).filter(x => x.due === k).sort((a, b) => (a.done - b.done) || String(a.title).localeCompare(String(b.title)));
+  if (!xs.length) return '';
+  const late = k < ymd(sod(new Date()));
+  return '<div class="dthead"><span>할 일</span><em>' + xs.filter(x => !x.done).length + '개 남음' + (late && xs.some(x => !x.done) ? ' · 밀린 일' : '') + '</em></div>'
+    + xs.map(x => '<div class="trow dt' + (x.done ? ' done' : '') + (late && !x.done ? ' late' : '') + '" data-tid="' + esc(x.id) + '">' + ckHTML(x.title + ' 완료', 'data-tk="' + esc(x.id) + '"' + (x.done ? ' checked' : '')) + '<button class="tmain" data-a="task" data-id="' + esc(x.id) + '"><span class="ttl">' + esc(x.title) + '<i class="strike"></i></span></button></div>').join('');
+}
+function tasksChangedOnCal() {
+  document.querySelectorAll('[data-daytasks]').forEach(el => { el.innerHTML = dayTasksHTML(el.dataset.daytasks); });
+  if (st.tab === 'cal') { if (st.view === 'month') drawMonth(); else drawWeek(); }
+}
+let calTaskSync = false;
+function syncCalTasks() {
+  if (calTaskSync) return; calTaskSync = true;
+  loadTasks().then(ch => { if (ch) tasksChangedOnCal(); }).catch(() => {}).finally(() => { calTaskSync = false; });
 }
 
 /* ========== 일정 상세 ========== */
@@ -571,6 +601,7 @@ function renderTasks() {
   loadTasks().then(ch => { if (st.tab === 'task' && (ch || !$('#tscroll'))) renderTasks(); }).catch(err => { if (!T.lists) $('#main').innerHTML = '<div class="empty">할 일을 불러오지 못했습니다.<br>' + esc(err.message) + '</div>'; });
 }
 function drawTasks() {
+  if (st.tab !== 'task') { tasksChangedOnCal(); return; }
   const main = $('#main');
   if (!T.lists) { main.innerHTML = '<div class="empty">불러오는 중…</div>'; return; }
   const today = ymd(sod(new Date())), lid = S.listId || (T.lists[0] || {}).id;
@@ -707,7 +738,7 @@ async function taskToggle(id, el) {
   x.done = done; x.completed = done ? new Date().toISOString() : ''; saveTasks();
   rowEl.classList.remove('jd', 'ju'); void rowEl.offsetWidth;
   rowEl.classList.toggle('done', done); rowEl.classList.add(done ? 'jd' : 'ju');
-  setTimeout(() => { if (st.tab === 'task') drawTasks(); }, done ? 1400 : 750);
+  setTimeout(drawTasks, done ? 1400 : 750);
   try { await api('taskUpdate', { listId: x.listId, id, patch: { done } }, true); } catch (err) { x.done = !done; saveTasks(); toast('저장 실패: ' + err.message); drawTasks(); }
 }
 async function taskAdd() {
@@ -1135,7 +1166,15 @@ let tx = null, ty = null;
 $('#main').addEventListener('touchstart', e => { if (st.tab !== 'cal') return; if (e.touches.length === 1) { tx = e.touches[0].clientX; ty = e.touches[0].clientY; } }, { passive: true });
 $('#main').addEventListener('touchend', e => { if (tx == null) return; const dx = e.changedTouches[0].clientX - tx, dy = e.changedTouches[0].clientY - ty; tx = null; if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) move(dx < 0 ? 1 : -1); }, { passive: true });
 let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => render(), 200); });
-document.addEventListener('visibilitychange', () => { if (!document.hidden && !sheetStack.length) { checkUpdate(); Object.keys(M.ts).forEach(k => M.ts[k] = 0); T.ts = 0; G.ts = 0; render(); } });
+let hiddenAt = 0;
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) { hiddenAt = Date.now(); return; }
+  if (sheetStack.length) return;
+  checkUpdate(); Object.keys(M.ts).forEach(k => M.ts[k] = 0); T.ts = 0; G.ts = 0;
+  // iOS 홈 화면 앱은 다시 열 때 새로 시작하지 않고 이어지는 경우가 많음 → 10분 넘게 쉬었으면 '새로 연 것'으로 보고 월간·이번 달로
+  if (hiddenAt && Date.now() - hiddenAt > 600000) { st.tab = 'cal'; st.view = 'month'; st.cur = sod(new Date()); }
+  render();
+});
 
 /* 새 화면 버전이 올라오면 저절로 새로 고침 */
 async function checkUpdate() {

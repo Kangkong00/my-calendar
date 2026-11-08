@@ -126,6 +126,38 @@ async def run():
         await pg.screenshot(path=f'{OUT}/PC_1280x800_새일정.png')
         report['PC 1280x800'] = res + errs
         await ctx.close()
+        # 캘린더↔할 일 연결 + 시작 화면 기능 검사 (390x844)
+        ctx = await b.new_context(viewport={'width': 390, 'height': 844}, device_scale_factor=2, has_touch=True)
+        pg = await ctx.new_page(); errs = []; iss = []
+        pg.on('pageerror', lambda e: errs.append(str(e)))
+        await pg.route('**/version.json*', lambda r: r.fulfill(status=404, body=''))
+        await pg.goto(URL); await pg.evaluate("localStorage.clear();localStorage.setItem('cal.settings', JSON.stringify({tab:'task', view:'week'}))"); await pg.reload()
+        await pg.wait_for_selector('#cover', state='detached', timeout=5000); await pg.wait_for_timeout(1200)
+        if not await pg.evaluate("() => !!document.querySelector('#mwrap') && document.querySelector('#nCal').classList.contains('on')"): iss.append('시작 화면이 캘린더 월간이 아님')
+        exp = await pg.evaluate("() => { const m = {}; T.tasks.filter(x => x.due && !x.done).forEach(x => m[x.due] = (m[x.due] || 0) + 1); return m; }")
+        got = await pg.evaluate("() => Object.fromEntries([...document.querySelectorAll('.mday')].filter(d => d.querySelector('.tdue')).map(d => [d.dataset.day, +d.querySelector('.tdue').innerText]))")
+        vis = {k: v for k, v in exp.items() if k in await pg.evaluate("() => [...document.querySelectorAll('.mday')].map(d => d.dataset.day)")}
+        if not vis: iss.append('예시 데이터에 이번 달 마감 할 일이 없음(검사 불가)')
+        if got != vis: iss.append(f'월간 할 일 표시 불일치: 기대 {vis} / 화면 {got}')
+        await pg.screenshot(path=f'{OUT}/연결_월간.png')
+        day = sorted(vis.keys())[-1] if vis else None
+        if day:
+            await pg.click(f'.mday[data-day="{day}"]'); await pg.wait_for_timeout(600)
+            n0 = await pg.evaluate("() => document.querySelectorAll('.sheet .daytasks .trow:not(.done)').length")
+            if n0 != vis[day]: iss.append(f'하루 시트 할 일 {n0}개 ≠ {vis[day]}개')
+            iss += [x for x in await pg.evaluate(CHECK)]
+            await pg.screenshot(path=f'{OUT}/연결_하루시트.png')
+            await pg.click('.sheet .daytasks label.ck >> nth=0'); await pg.wait_for_timeout(1800)
+            n1 = await pg.evaluate("() => document.querySelectorAll('.sheet .daytasks .trow:not(.done)').length")
+            badge = await pg.evaluate(f"() => {{ const e = document.querySelector('.mday[data-day=\"{day}\"] .tdue'); return e ? +e.innerText : 0; }}")
+            if n1 != n0 - 1 or badge != vis[day] - 1: iss.append(f'완료 체크 후 반영 안 됨: 시트 {n0}→{n1}, 월간 {vis[day]}→{badge}')
+            await pg.click('.sheet .daytasks [data-a=task] >> nth=0'); await pg.wait_for_timeout(600)
+            if not await pg.evaluate("() => !!document.querySelector('#kNotes')"): iss.append('하루 시트에서 할 일 눌러도 메모가 안 열림')
+            await pg.evaluate('closeAll()'); await pg.wait_for_timeout(400)
+        await pg.click('#vWeek'); await pg.wait_for_timeout(800); iss += await pg.evaluate(CHECK)
+        await pg.screenshot(path=f'{OUT}/연결_주간.png')
+        report['캘린더↔할 일 연결·시작 화면'] = iss + errs
+        await ctx.close()
         await b.close()
     bad = {k: v for k, v in report.items() if v}
     print(json.dumps(bad, ensure_ascii=False, indent=1) if bad else '검수 통과: 문제 없음')
