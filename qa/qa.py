@@ -169,6 +169,45 @@ async def run():
         await pg.screenshot(path=f'{OUT}/연결_주간.png')
         report['캘린더↔할 일 연결·시작 화면'] = iss + errs
         await ctx.close()
+        # 반복 할 일 기능 검사 (예시 데이터, 390x844)
+        ctx = await b.new_context(viewport={'width': 390, 'height': 844}, device_scale_factor=2, has_touch=True)
+        pg = await ctx.new_page(); errs = []; iss = []
+        pg.on('pageerror', lambda e: errs.append(str(e)))
+        await pg.route('**/version.json*', lambda r: r.fulfill(status=404, body=''))
+        await pg.goto(URL); await pg.evaluate('localStorage.clear()'); await pg.reload(); await pg.wait_for_selector('#cover', state='detached', timeout=5000)
+        await pg.click('#nTask'); await pg.wait_for_timeout(1000)
+        T0 = '기출 1회 풀기'
+        await pg.click(f'.trow[data-tid] .tmain:has-text("{T0}")'); await pg.wait_for_timeout(500)
+        await pg.click('[data-a=krep][data-v=daily]'); await pg.wait_for_timeout(200)
+        iss += await pg.evaluate(CHECK); await pg.screenshot(path=f'{OUT}/반복_편집.png')
+        await pg.click('[data-a=ksave]'); await pg.wait_for_timeout(1200)
+        st_ = await pg.evaluate(f"() => {{ const xs = T.tasks.filter(x => x.title === '{T0}'); return {{ n: xs.length, notes: xs.map(x => x.notes), rep: xs.map(x => repOf(x.notes) && repOf(x.notes).k) }}; }}")
+        if st_['rep'] != ['daily']: iss.append(f'반복 저장 실패: {st_}')
+        if '↻ 매일' not in await pg.inner_text('#main'): iss.append('할 일 목록에 ↻ 매일 표시 없음')
+        if '↻반복' in await pg.inner_text('#main'): iss.append('반복 표식 글자가 화면에 보임')
+        await pg.screenshot(path=f'{OUT}/반복_목록.png')
+        # 다음 날 흉내: 오늘 회차를 어제 마감·완료로 바꾸고 다시 불러오기 → 오늘 회차 1개 새로 생겨야 함
+        cnt = """async (t) => { await loadTasks(true); await new Promise(r => setTimeout(r, 900)); while (repBusy) await new Promise(r => setTimeout(r, 100)); const k = ymd(sod(new Date())); const xs = T.tasks.filter(x => x.title === t); return { all: xs.length, todayOpen: xs.filter(x => x.due === k && !x.done).length, open: xs.filter(x => !x.done).map(x => x.due) }; }"""
+        await pg.evaluate(f"async () => {{ const x = T.tasks.find(y => y.title === '{T0}'); await api('taskUpdate', {{ listId: x.listId, id: x.id, patch: {{ due: ymd(addD(sod(new Date()), -1)), done: true }} }}, true); }}")
+        r1 = await pg.evaluate(cnt, T0)
+        if r1['todayOpen'] != 1 or r1['all'] != 2: iss.append(f'다음 날 새 회차 생성 이상: {r1}')
+        r2 = await pg.evaluate(cnt, T0)
+        if r2['all'] != 2: iss.append(f'다시 불러오면 중복 생성됨: {r2}')
+        # 밀린 회차: 열린 회차를 3일 전으로 → 오늘로 옮겨져야(새로 만들지 않음)
+        await pg.evaluate(f"async () => {{ const x = T.tasks.find(y => y.title === '{T0}' && !y.done); await api('taskUpdate', {{ listId: x.listId, id: x.id, patch: {{ due: ymd(addD(sod(new Date()), -3)) }} }}, true); }}")
+        r3 = await pg.evaluate(cnt, T0)
+        if r3['all'] != 2 or r3['todayOpen'] != 1: iss.append(f'밀린 회차 오늘로 옮기기 이상: {r3}')
+        # 삭제하면 반복 멈춤
+        await pg.click('#nCal'); await pg.wait_for_timeout(600); await pg.click('#nTask'); await pg.wait_for_timeout(800)
+        await pg.click(f'.trow[data-tid] .tmain:has-text("{T0}")'); await pg.wait_for_timeout(500)
+        await pg.click('#kDel'); await pg.click('#kDel'); await pg.wait_for_timeout(1000)
+        r4 = await pg.evaluate(cnt, T0)
+        if r4['open']: iss.append(f'삭제 후에도 반복이 다시 생김: {r4}')
+        # 규칙 계산 단위 검사
+        u = await pg.evaluate("""() => { const d = s => pymd(s); return [repHits({k:'weekday'}, d('2026-11-08')), repHits({k:'weekday'}, d('2026-11-09')), repHits({k:'weekly', n:1}, d('2026-11-09')), repHits({k:'monthly', n:31}, d('2026-11-30')), repHits({k:'monthly', n:31}, d('2026-11-29')), ymd(repNext({k:'weekly', n:1}, d('2026-11-08'))), ymd(repNext({k:'weekday'}, d('2026-11-08'))), repSet('메모', 'weekly', '2026-11-09'), repStrip('메모\\n↻반복=weekly:1')]; }""")
+        if u != [False, True, True, True, False, '2026-11-09', '2026-11-09', '메모\n↻반복=weekly:1', '메모']: iss.append(f'반복 규칙 계산 이상: {u}')
+        report['반복 할 일'] = iss + errs
+        await ctx.close()
         await b.close()
     bad = {k: v for k, v in report.items() if v}
     print(json.dumps(bad, ensure_ascii=False, indent=1) if bad else '검수 통과: 문제 없음')

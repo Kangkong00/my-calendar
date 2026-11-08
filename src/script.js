@@ -1,6 +1,6 @@
 <script>
 'use strict';
-const APP_V = '3.18';
+const APP_V = '3.19';
 /* ========== 기본 도구 ========== */
 const $ = s => document.querySelector(s);
 const pad = n => String(n).padStart(2, '0');
@@ -85,6 +85,13 @@ const Demo = (() => {
     delete: p => { evs = evs.filter(x => x.id !== p.id); return { ok: true }; },
     batch: p => ({ ok: true, results: p.requests.map(r => {
       const u = decodeURIComponent(r.url), m = r.method;
+      const ml = u.match(/\/lists\/([^/]+)\/tasks(?:\?(.*))?$/);
+      if (ml) { // 목록 조회(dueMin)·새 할 일 — 반복 할 일 엔진용
+        const lid = ml[1], gt = x => ({ id: x.id, title: x.title, notes: x.notes, due: x.due ? x.due + 'T00:00:00.000Z' : undefined, status: x.done ? 'completed' : 'needsAction' });
+        if (m === 'post') { const b = r.body || {}, x = { id: 't' + seq++, listId: lid, title: b.title || '', notes: b.notes || '', due: b.due ? b.due.slice(0, 10) : '', done: false, completed: '', parent: '' }; tasks.unshift(x); return { code: 200, body: gt(x) }; }
+        const dm = (new URLSearchParams(ml[2] || '').get('dueMin') || '').slice(0, 10);
+        return { code: 200, body: { items: tasks.filter(x => x.listId === lid && (!dm || (x.due && x.due >= dm))).map(gt) } };
+      }
       let mt = u.match(/\/lists\/([^/]+)\/tasks\/([^/?]+)/);
       if (mt) { const x = tasks.find(y => y.id === mt[2]); if (!x) return { code: 404, body: null }; if (m === 'delete') { tasks = tasks.filter(y => y.id !== x.id && y.parent !== x.id); return { code: 204, body: null }; } const b = r.body || {}; if (b.title != null) x.title = b.title; if (b.notes !== undefined) x.notes = b.notes || ''; if (b.due !== undefined) x.due = b.due ? b.due.slice(0, 10) : ''; return { code: 200, body: { id: x.id, title: x.title, notes: x.notes, due: x.due ? x.due + 'T00:00:00.000Z' : undefined, status: x.done ? 'completed' : 'needsAction' } }; }
       mt = u.match(/\/calendars\/([^/]+)\/events(?:\/([^/?]+))?(\/move\?destination=(.+))?/); if (!mt) return { code: 404, body: null };
@@ -379,6 +386,91 @@ async function openDay(d) {
   body.scrollTop = Math.max(0, ((same(now, d) ? mins(now) - 90 : (starts.length ? Math.min(...starts) - 30 : 420)) / 60) * PX);
 }
 
+/* ========== 반복 할 일 (v3.19) ==========
+   구글 Tasks API에는 반복 설정이 없어서 앱이 직접 만든다. 백엔드 수정 없음(batch 중계만 사용).
+   - 저장: 할 일 메모 맨 끝 줄에 표식 "↻반복=daily | weekday | weekly:요일(0~6) | monthly:날짜(1~31)". 화면에는 안 보임(plainNote·편집기에서 제거).
+   - 한 반복 묶음 = 같은 목록 + 같은 제목. 묶음의 '머리'(안 끝낸 회차, 없으면 마감이 가장 늦은 회차)의 표식이 규칙.
+   - 늘 열린 회차는 하나: 안 끝낸 회차가 지난 날짜면 '오늘 이후 첫 반복 날짜'로 옮김(밀린 일로 쌓이지 않게),
+     다 끝냈으면 그 날짜 몫을 새로 만듦(매일은 다음 날 열 때, 매주는 끝낸 뒤 바로 다음 주 몫이 '다가오는 일'에). 만들기 전에 구글에 직접 다시 물어 중복 생성을 막음.
+   - 앱을 열어야 그날 몫이 생김. 반복을 멈추려면 '반복: 안 함' 또는 삭제(남은 최신 회차의 표식도 지움). */
+const REP = [['', '안 함'], ['daily', '매일'], ['weekday', '평일'], ['weekly', '매주'], ['monthly', '매월']];
+const REP_RE = /\n?↻반복=(daily|weekday|weekly|monthly)(?::(\d+))?[ \t]*$/;
+const repStrip = t => String(t || '').replace(REP_RE, '');
+const repOf = t => { const m = String(t || '').match(REP_RE); return m ? { k: m[1], n: m[2] != null ? Number(m[2]) : null } : null; };
+function repSet(notes, k, due) {
+  const b = repStrip(notes); if (!k) return b;
+  const d = due ? pymd(due) : sod(new Date()), n = k === 'weekly' ? d.getDay() : k === 'monthly' ? d.getDate() : null;
+  return (b ? b + '\n' : '') + '↻반복=' + k + (n != null ? ':' + n : '');
+}
+const repLabel = r => !r ? '' : r.k === 'daily' ? '매일' : r.k === 'weekday' ? '평일' : r.k === 'weekly' ? '매주 ' + WD[r.n || 0] + '요일' : '매월 ' + (r.n || 1) + '일';
+function repHits(r, d) {
+  const w = d.getDay();
+  if (r.k === 'daily') return true;
+  if (r.k === 'weekday') return w > 0 && w < 6;
+  if (r.k === 'weekly') return w === (r.n || 0);
+  const last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+  return d.getDate() === Math.min(r.n || 1, last);
+}
+// 오늘 포함, 오늘 이후 첫 반복 날짜 (평일 반복을 일요일에 열면 월요일)
+function repNext(r, today) { for (let i = 0; i < 62; i++) { const d = addD(today, i); if (repHits(r, d)) return d; } return null; }
+const repKey = x => x.listId + '\u0001' + String(x.title || '').trim();
+function repHead(xs) {
+  const open = xs.filter(x => !x.done), pool = open.length ? open : xs;
+  return pool.slice().sort((a, b) => (b.due || '') < (a.due || '') ? -1 : (b.due || '') > (a.due || '') ? 1 : 0)[0];
+}
+// 반복 표시: ↻ 매일 · 7일 중 5번 (매주·매월은 최근 4회/3회 중)
+function repBadge(x, r) {
+  const k = repKey(x), today = sod(new Date());
+  const done = new Set((T.tasks || []).filter(y => y.done && y.due && repKey(y) === k).map(y => y.due));
+  let tot = 0, hit = 0, d = today, guard = 0;
+  const want = r.k === 'weekly' ? 4 : r.k === 'monthly' ? 3 : 7;
+  if (r.k === 'daily' || r.k === 'weekday') { for (let i = 0; i < 7; i++) { const z = addD(today, -i); if (repHits(r, z)) { tot++; if (done.has(ymd(z))) hit++; } } }
+  else while (tot < want && guard++ < 400) { if (repHits(r, d)) { tot++; if (done.has(ymd(d))) hit++; } d = addD(d, -1); }
+  return '<span class="rep">↻ ' + repLabel(r) + (hit ? ' · ' + (r.k === 'daily' || r.k === 'weekday' ? '최근 7일 중 ' : '최근 ' + tot + '번 중 ') + hit + '번' : '') + '</span>';
+}
+const mapGTask = (t, listId) => ({ id: t.id, listId, title: t.title || '', notes: t.notes || '', due: t.due ? t.due.slice(0, 10) : '', done: t.status === 'completed', completed: t.completed || '', parent: t.parent || '' });
+const taskUrl = (l, id) => TAPI + '/lists/' + encodeURIComponent(l) + '/tasks' + (id ? '/' + encodeURIComponent(id) : '');
+let repBusy = false;
+async function repSync() {
+  if (repBusy || !T.lists || !T.tasks) return; repBusy = true;
+  try {
+    const today = sod(new Date()), groups = {};
+    T.tasks.filter(x => !x.parent && !String(x.id).startsWith('tmp')).forEach(x => { const k = repKey(x); (groups[k] = groups[k] || []).push(x); });
+    const rolls = [], makes = [];
+    Object.values(groups).forEach(xs => {
+      const h = repHead(xs), r = h && repOf(h.notes); if (!r) return;
+      const nx = repNext(r, today); if (!nx) return; const ck = ymd(nx), tk = ymd(today);
+      if (!h.done) { if (!h.due || h.due < tk) rolls.push({ x: h, due: ck }); } // 지난 회차는 다음 반복 날짜로 옮김(밀린 일로 쌓이지 않게)
+      else if ((h.due || '') < ck) makes.push({ h, r, due: ck }); // 다 끝냈으면 다음 반복 날짜 몫을 만듦
+    });
+    if (!rolls.length && !makes.length) return;
+    // 만들기 전 확인: 그 목록에 오늘 몫(같은 제목, 마감 ≥ 오늘 몫)이 이미 있는지 구글에 직접 물음 (불러온 목록은 끝낸 할 일이 30일·100개까지만이라)
+    let ok = makes;
+    if (makes.length) {
+      const lists = [...new Set(makes.map(m => m.h.listId))], minDue = makes.reduce((a, m) => m.due < a ? m.due : a, makes[0].due);
+      const res = await batch(lists.map(l => ({ method: 'get', url: taskUrl(l) + '?showCompleted=true&showHidden=true&maxResults=100&dueMin=' + encodeURIComponent(minDue + 'T00:00:00.000Z') })));
+      const have = new Set(); res.forEach((x, i) => ((x.body && x.body.items) || []).forEach(t => { if (t.due && t.due.slice(0, 10) >= minDue) have.add(lists[i] + '\u0001' + String(t.title || '').trim() + '\u0001' + t.due.slice(0, 10)); }));
+      ok = makes.filter(m => !have.has(repKey(m.h) + '\u0001' + m.due));
+    }
+    const reqs = rolls.map(o => ({ method: 'patch', url: taskUrl(o.x.listId, o.x.id), body: { due: o.due + 'T00:00:00.000Z' } }))
+      .concat(ok.map(m => ({ method: 'post', url: taskUrl(m.h.listId), body: { title: m.h.title, notes: m.h.notes, due: m.due + 'T00:00:00.000Z' } })));
+    if (!reqs.length) return;
+    const out = await batch(reqs);
+    rolls.forEach(o => { o.x.due = o.due; });
+    ok.forEach((m, i) => { const b = out[rolls.length + i].body; if (b && b.id) T.tasks.unshift(mapGTask(b, m.h.listId)); });
+    saveTasks(); drawTasks();
+  } catch (e) { console.warn('반복 할 일 맞추기 실패', e); }
+  finally { repBusy = false; }
+}
+// 반복 할 일 삭제 = 반복 멈춤: 같은 묶음에서 남는 최신 회차에 표식이 있으면 지우는 요청
+function repStopReq(x) {
+  if (!repOf(x.notes)) return null;
+  const rest = (T.tasks || []).filter(y => y.id !== x.id && !y.parent && repKey(y) === repKey(x)), h = rest.length && repHead(rest);
+  if (!h || !repOf(h.notes)) return null;
+  const notes = repStrip(h.notes);
+  return { req: { method: 'patch', url: taskUrl(h.listId, h.id), body: { notes } }, apply() { h.notes = notes; } };
+}
+
 /* ========== 캘린더 ↔ 할 일 연결 (v3.17) ==========
    마감일이 있는 할 일(구글 Tasks)을 월간 칸·주간 머리·하루 시트에 보여 줌. 모든 목록 대상, 끝낸 것은 숨김.
    지난 날짜에 남은 할 일은 붉은색(밀린 일). 할 일이 바뀌면 drawTasks()가 캘린더 탭에서는 tasksChangedOnCal()로 넘김. */
@@ -392,7 +484,7 @@ function dayTasksHTML(k) {
   const today = ymd(sod(new Date())), late = k < today;
   const xs = (T.tasks || []).filter(x => x.due === k).sort((a, b) => (a.done - b.done) || String(a.title).localeCompare(String(b.title)));
   const lt = k === today ? dueOpen().filter(x => x.due < today).sort((a, b) => a.due < b.due ? -1 : 1) : [];
-  const row = (x, isLate, sub) => '<div class="trow dt' + (x.done ? ' done' : '') + (isLate && !x.done ? ' late' : '') + '" data-tid="' + esc(x.id) + '">' + ckHTML(x.title + ' 완료', 'data-tk="' + esc(x.id) + '"' + (x.done ? ' checked' : '')) + '<button class="tmain" data-a="task" data-id="' + esc(x.id) + '"><span class="ttl">' + esc(x.title) + '<i class="strike"></i></span>' + (sub ? '<span class="tmeta">' + sub + '</span>' : '') + '</button></div>';
+  const row = (x, isLate, sub) => '<div class="trow dt' + (x.done ? ' done' : '') + (isLate && !x.done ? ' late' : '') + '" data-tid="' + esc(x.id) + '">' + ckHTML(x.title + ' 완료', 'data-tk="' + esc(x.id) + '"' + (x.done ? ' checked' : '')) + '<button class="tmain" data-a="task" data-id="' + esc(x.id) + '"><span class="ttl">' + esc(x.title) + '<i class="strike"></i></span>' + (sub || repOf(x.notes) ? '<span class="tmeta">' + (repOf(x.notes) ? repBadge(x, repOf(x.notes)) + (sub ? ' · ' : '') : '') + (sub || '') + '</span>' : '') + '</button></div>';
   let h = '';
   if (xs.length) h += '<div class="dthead"><span>할 일</span><em>' + xs.filter(x => !x.done).length + '개 남음' + (late && xs.some(x => !x.done) ? ' · 밀린 일' : '') + '</em></div>' + xs.map(x => row(x, late)).join('');
   if (lt.length) h += '<div class="dthead late"><span>밀린 일</span><em>' + lt.length + '개 · 체크하면 완료, 눌러서 날짜 바꾸기</em></div>' + lt.map(x => row(x, true, koD(pymd(x.due)) + ' 까지였음')).join('');
@@ -598,6 +690,7 @@ async function loadTasks(force) {
   const r = await api('tasks'); const before = JSON.stringify(T.tasks);
   T.lists = r.lists; T.tasks = r.tasks; T.ts = Date.now(); saveTasks();
   if (!S.listId || !T.lists.find(l => l.id === S.listId)) { S.listId = (T.lists[0] || {}).id || ''; save(); }
+  setTimeout(repSync, 0);
   return JSON.stringify(T.tasks) !== before;
 }
 function renderTasks() {
@@ -619,8 +712,8 @@ function drawTasks() {
   const doneOld = mine.filter(x => x.done && x.due !== today);
   const tot = tdy.length, dn = tdy.filter(x => x.done).length, pct = tot ? Math.round(dn / tot * 100) : 0;
   const dl = s => { const d = pymd(s); return koD(d); };
-  const row = (x, kind) => { const lt = !x.done && x.due && x.due < today; const meta = [lt ? dl(x.due) + ' 까지였음' : '', kind === 'up' ? dl(x.due) : '', subs(x.id) ? '하위 ' + subs(x.id) + '개' : ''].filter(Boolean).join(' · '); const memo = plainNote(x.notes).split('\n').find(l => l.trim()) || '', tip = tipFor(x);
-    return '<div class="trow' + (x.done ? ' done' : '') + (lt ? ' late' : '') + '" data-tid="' + esc(x.id) + '"><i class="shine"></i>' + ckHTML(x.title + ' 완료', 'data-tk="' + esc(x.id) + '"' + (x.done ? ' checked' : '')) + '<div class="tmain"><span class="ttl">' + esc(x.title) + '<i class="strike"></i></span>' + (meta ? '<span class="tmeta">' + esc(meta) + '</span>' : '') + (memo ? '<span class="tmemo" style="font-family:' + NF(S.noteFont || 'pen')[2] + '">' + esc(memo) + '</span>' : '') + (tip ? '<span class="tai' + (tip.ai ? '' : ' rule') + '">' + esc(tip.t) + '</span>' : '') + '</div>' + (lt ? '<button class="tside" data-tt="' + esc(x.id) + '">오늘로</button>' : '') + '</div>'; };
+  const row = (x, kind) => { const lt = !x.done && x.due && x.due < today; const meta = [lt ? dl(x.due) + ' 까지였음' : '', kind === 'up' ? dl(x.due) : '', subs(x.id) ? '하위 ' + subs(x.id) + '개' : ''].filter(Boolean).join(' · '); const memo = plainNote(x.notes).split('\n').find(l => l.trim()) || '', tip = tipFor(x), rr = repOf(x.notes);
+    return '<div class="trow' + (x.done ? ' done' : '') + (lt ? ' late' : '') + '" data-tid="' + esc(x.id) + '"><i class="shine"></i>' + ckHTML(x.title + ' 완료', 'data-tk="' + esc(x.id) + '"' + (x.done ? ' checked' : '')) + '<div class="tmain"><span class="ttl">' + esc(x.title) + '<i class="strike"></i></span>' + (meta || rr ? '<span class="tmeta">' + (rr ? repBadge(x, rr) + (meta ? ' · ' : '') : '') + esc(meta) + '</span>' : '') + (memo ? '<span class="tmemo" style="font-family:' + NF(S.noteFont || 'pen')[2] + '">' + esc(memo) + '</span>' : '') + (tip ? '<span class="tai' + (tip.ai ? '' : ' rule') + '">' + esc(tip.t) + '</span>' : '') + '</div>' + (lt ? '<button class="tside" data-tt="' + esc(x.id) + '">오늘로</button>' : '') + '</div>'; };
   const grp = (title, cls, items, kind, extra) => '<div class="tgroup"><div class="tgh"><h3 class="serif ' + cls + '">' + title + '<small>' + items.length + '개</small></h3>' + (extra || '') + '</div><div class="tlist">' + (items.length ? items.map(x => row(x, kind)).join('') : '<div class="note" style="padding:14px;text-align:center">비어 있어요</div>') + '</div></div>';
   const W = [['today', '오늘'], ['tomorrow', '내일'], ['nextmon', '다음 주 월'], ['none', '날짜 없음']];
   let h = '<div class="scroller" id="tscroll"><div class="prog"><div class="t"><span>오늘 ' + dn + ' / ' + tot + ' 완료</span><span>' + pct + '%</span></div><div class="b"><i style="width:' + pct + '%"></i></div></div>'
@@ -659,7 +752,7 @@ function noteToHtml(t) {
   }
   return h.replace(/\n/g, '<br>');
 }
-const plainNote = t => String(t || '').replace(/\[\[[^:\]]+:([\s\S]*?)\]\]/g, '$1').replace(/\*\*|__/g, '');
+const plainNote = t => repStrip(t).replace(/\[\[[^:\]]+:([\s\S]*?)\]\]/g, '$1').replace(/\*\*|__/g, '');
 function hexOf(c) { if (!c) return ''; c = c.trim(); if (c[0] === '#') return c.length === 4 ? '#' + c[1] + c[1] + c[2] + c[2] + c[3] + c[3] : c.slice(0, 7); const m = c.match(/\d+/g); return m ? '#' + m.slice(0, 3).map(v => pad(Number(v).toString(16))).join('') : ''; }
 function inkName(c) { const h = hexOf(c); if (!h) return ''; const v = x => [1, 3, 5].map(i => parseInt(x.substr(i, 2), 16)); const a = v(h); let best = '', bd = 1e9; INKS.forEach(i => { const b = v(i[1]), d = (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2; if (d < bd) { bd = d; best = i[0]; } }); return best === '기본' ? '' : best; }
 function htmlToNote(root) {
@@ -681,7 +774,7 @@ function htmlToNote(root) {
 }
 function openTask(x) {
   const today = sod(new Date());
-  const f = { title: x.title, due: x.due || '', armed: false };
+  const r0 = repOf(x.notes), f = { title: x.title, due: x.due || '', armed: false, rep: r0 ? r0.k : '' };
   if (!S.noteSize) S.noteSize = 16; if (!NFONTS.some(z => z[0] === S.noteFont)) S.noteFont = 'pen';
   loadFont(S.noteFont);
   const Q = [['오늘', ymd(today)], ['내일', ymd(addD(today, 1))], ['다음 주 월', ymd(addD(today, ((8 - today.getDay()) % 7) || 7))], ['날짜 없음', '']];
@@ -689,6 +782,7 @@ function openTask(x) {
   const paperStyle = () => 'font-family:' + NF(S.noteFont)[2] + ';font-size:' + fs() + 'px;line-height:' + lh() + 'px;background-size:100% ' + lh() + 'px;min-height:' + (lh() * 10) + 'px';
   let sh;
   const dueRow = () => '<div class="scrollx" style="padding:0 0 8px 36px">' + Q.map(q => '<button class="nchip' + (f.due === q[1] ? ' on' : '') + '" data-a="kq" data-v="' + q[1] + '">' + q[0] + '</button>').join('') + '<label class="nchip" style="position:relative;overflow:hidden;flex-shrink:0">날짜 고르기<input type="date" id="kDue" value="' + f.due + '" style="position:absolute;inset:0;opacity:0"></label></div>';
+  const repRow = () => '<div class="scrollx" style="padding:0 0 8px 36px"><span class="lab" style="align-self:center;flex-shrink:0;margin-right:2px">반복</span>' + REP.map(q => '<button class="nchip' + (f.rep === q[0] ? ' on' : '') + '" data-a="krep" data-v="' + q[0] + '">' + q[1] + '</button>').join('') + '</div>';
   const html = '<div class="shead"><button class="tbtn" data-a="cancel">취소</button><h2 class="serif goldtext" style="font-size:calc(17px*var(--fz,1))">할 일 · 메모</h2><button class="gbtn" data-a="ksave">저장</button></div>'
     + '<div class="ntoolbar">'
     + '<div class="scrollx" id="fontRow">' + NFONTS.map(z => '<button class="nchip fmt' + (S.noteFont === z[0] ? ' on' : '') + '" data-a="nf" data-v="' + z[0] + '"><span style="font-family:' + z[2] + ';font-size:' + Math.round(14 * z[4]) + 'px">' + z[1] + '</span></button>').join('') + '</div>'
@@ -698,8 +792,8 @@ function openTask(x) {
     + '<div class="sbody" style="gap:12px;padding-top:10px" id="kBody"><div class="npaper">'
     + '<div class="nhead"><span class="nstamp" id="kStamp">' + esc(f.due ? koD(pymd(f.due)) : '날짜 없음') + '</span><span class="nline"></span></div>'
     + '<input class="ntitle" id="kTitle" value="' + esc(f.title) + '" autocomplete="off" aria-label="할 일">'
-    + '<div id="kDueRow">' + dueRow() + '</div>'
-    + '<div class="nmemo" id="kNotes" contenteditable="true" role="textbox" aria-multiline="true" aria-label="메모" data-ph="여기에 메모를 끄적여 보세요…">' + noteToHtml(x.notes) + '</div>'
+    + '<div id="kDueRow">' + dueRow() + '</div><div id="kRepRow">' + repRow() + '</div>'
+    + '<div class="nmemo" id="kNotes" contenteditable="true" role="textbox" aria-multiline="true" aria-label="메모" data-ph="여기에 메모를 끄적여 보세요…">' + noteToHtml(repStrip(x.notes)) + '</div>'
     + '</div><div class="row" style="justify-content:center;padding:4px 0 8px"><button class="obtn" data-a="kdel" id="kDel" style="min-width:140px">삭제</button></div>'
     + '<p class="note" style="text-align:center;font-size:calc(11px*var(--fz,1))">굵게·밑줄·잉크 색은 구글 Tasks에 **굵게**, __밑줄__, [[금:글자]] 같은 표시로 저장됩니다.</p></div>';
   const restyle = () => {
@@ -714,6 +808,7 @@ function openTask(x) {
   sh = openSheet(html, async (a, t) => {
     if (a === 'cancel') { closeSheet(); return; }
     if (a === 'kq') { setDue(t.dataset.v); return; }
+    if (a === 'krep') { f.rep = t.dataset.v; sh.querySelector('#kRepRow').innerHTML = repRow(); if (f.rep && !f.due) setDue(ymd(today)); return; }
     if (a === 'nf') { S.noteFont = t.dataset.v; save(); restyle(); return; }
     if (a === 'fsz') { S.noteSize = Math.max(12, Math.min(26, S.noteSize + Number(t.dataset.v) * 2)); save(); restyle(); return; }
     if (a === 'bold') { exec('bold'); return; }
@@ -722,14 +817,14 @@ function openTask(x) {
     if (a === 'kdel') {
       if (!f.armed) { f.armed = true; t.textContent = '한 번 더 누르면 삭제'; t.style.borderColor = '#E8957A'; t.style.color = '#E8957A'; return; }
       t.disabled = true;
-      try { await batch([{ method: 'delete', url }]); T.tasks = T.tasks.filter(y => y.id !== x.id && y.parent !== x.id); saveTasks(); toast('삭제했습니다'); closeSheet(); drawTasks(); } catch (err) { toast('삭제 실패: ' + err.message); t.disabled = false; }
+      try { const stop = repStopReq(x); await batch([{ method: 'delete', url }].concat(stop ? [stop.req] : [])); if (stop) stop.apply(); T.tasks = T.tasks.filter(y => y.id !== x.id && y.parent !== x.id); saveTasks(); toast(stop ? '삭제했습니다 · 반복도 멈췄어요' : '삭제했습니다'); closeSheet(); drawTasks(); } catch (err) { toast('삭제 실패: ' + err.message); t.disabled = false; }
       return;
     }
     if (a === 'ksave') {
       const title = (sh.querySelector('#kTitle').value || '').trim(); if (!title) { toast('내용을 입력해 주세요'); return; }
-      const notes = htmlToNote(sh.querySelector('#kNotes'));
+      const notes = repSet(htmlToNote(sh.querySelector('#kNotes')), f.rep, f.due);
       t.disabled = true; t.textContent = '저장 중';
-      try { await batch([{ method: 'patch', url, body: { title, notes, due: f.due ? f.due + 'T00:00:00.000Z' : null } }]); Object.assign(x, { title, notes, due: f.due }); saveTasks(); toast('저장했습니다'); closeSheet(); drawTasks(); }
+      try { await batch([{ method: 'patch', url, body: { title, notes, due: f.due ? f.due + 'T00:00:00.000Z' : null } }]); Object.assign(x, { title, notes, due: f.due }); saveTasks(); toast(f.rep ? '저장했습니다 · ' + repLabel(repOf(notes)) + ' 반복' : '저장했습니다'); closeSheet(); drawTasks(); repSync(); }
       catch (err) { toast('저장 실패: ' + err.message); t.disabled = false; t.textContent = '저장'; }
     }
   }, { keep: true, height: '94%', onChange: e => { if (e.target.id === 'kDue') setDue(e.target.value); } });
