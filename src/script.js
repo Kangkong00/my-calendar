@@ -1,6 +1,6 @@
 <script>
 'use strict';
-const APP_V = '3.19';
+const APP_V = '3.20';
 /* ========== 기본 도구 ========== */
 const $ = s => document.querySelector(s);
 const pad = n => String(n).padStart(2, '0');
@@ -682,7 +682,7 @@ async function openDuplicate(o) {
 }
 
 /* ========== 할 일 ========== */
-const T = { lists: null, tasks: [], when: 'today', draft: '', showDone: false, ts: 0 };
+const T = { lists: null, tasks: [], when: 'today', pick: '', rep: '', draft: '', showDone: false, ts: 0 };
 (() => { const c = store.get('tasks'); if (c) { T.lists = c.lists; T.tasks = c.tasks; } })();
 const saveTasks = () => store.set('tasks', { lists: T.lists, tasks: T.tasks });
 async function loadTasks(force) {
@@ -717,7 +717,11 @@ function drawTasks() {
   const grp = (title, cls, items, kind, extra) => '<div class="tgroup"><div class="tgh"><h3 class="serif ' + cls + '">' + title + '<small>' + items.length + '개</small></h3>' + (extra || '') + '</div><div class="tlist">' + (items.length ? items.map(x => row(x, kind)).join('') : '<div class="note" style="padding:14px;text-align:center">비어 있어요</div>') + '</div></div>';
   const W = [['today', '오늘'], ['tomorrow', '내일'], ['nextmon', '다음 주 월'], ['none', '날짜 없음']];
   let h = '<div class="scroller" id="tscroll"><div class="prog"><div class="t"><span>오늘 ' + dn + ' / ' + tot + ' 완료</span><span>' + pct + '%</span></div><div class="b"><i style="width:' + pct + '%"></i></div></div>'
-    + '<div class="qadd"><div class="r"><input id="tDraft" placeholder="할 일 추가…" aria-label="새 할 일" value="' + esc(T.draft) + '" autocomplete="off" enterkeyhint="done"><button class="go" data-tadd aria-label="추가">' + ICON.plus + '</button></div><div class="row">' + W.map(w => '<button class="pillb' + (T.when === w[0] ? ' on' : '') + '" data-when="' + w[0] + '">' + w[1] + '</button>').join('') + '</div></div>';
+    + '<div class="qadd"><div class="r"><input id="tDraft" placeholder="할 일 추가…" aria-label="새 할 일" value="' + esc(T.draft) + '" autocomplete="off" enterkeyhint="done"><button class="go" data-tadd aria-label="추가">' + ICON.plus + '</button></div>'
+      // 처음 등록할 때부터 날짜·반복 선택 (v3.20)
+      + '<div class="row qrow">' + W.map(w => '<button class="pillb' + (T.when === w[0] ? ' on' : '') + '" data-when="' + w[0] + '">' + w[1] + '</button>').join('')
+      + '<label class="pillb pick' + (T.when === 'pick' ? ' on' : '') + '">' + (T.when === 'pick' && T.pick ? esc(koD(pymd(T.pick))) : '날짜 고르기') + '<input type="date" id="tPick" aria-label="날짜 고르기" value="' + esc(T.pick || '') + '"></label></div>'
+      + '<div class="row qrow"><span class="lab qlab">반복</span>' + REP.map(q => '<button class="pillb' + (T.rep === q[0] ? ' on' : '') + '" data-trep="' + q[0] + '">' + q[1] + '</button>').join('') + '</div></div>';
   if (late.length) h += grp('밀린 일', 'late', late, 'late', '<button class="tside" data-rollall style="margin-right:0;border-color:#8E6B3A;background:rgba(201,164,106,.1)">모두 오늘로</button>');
   h += grp('오늘 · ' + dl(today), '', tdy, 'today') + grp('다가오는 일', '', up, 'up') + grp('날짜 없음', 'mute', none, 'none');
   h += '<button class="donetoggle" data-donetog aria-expanded="' + T.showDone + '"><span style="display:inline-flex;transition:transform .2s;transform:rotate(' + (T.showDone ? 90 : 0) + 'deg)">' + ICON.chev + '</span>완료됨 ' + doneOld.length + '개</button>';
@@ -844,9 +848,15 @@ async function taskToggle(id, el) {
 }
 async function taskAdd() {
   const inp = $('#tDraft'), title = (inp.value || '').trim(); if (!title) { inp.focus(); return; }
-  const due = nextDue(T.when), tmp = { id: 'tmp' + Date.now(), listId: S.listId, title, notes: '', due, done: false, completed: '', parent: '' };
-  T.tasks.unshift(tmp); T.draft = ''; drawTasks(); $('#tDraft').focus();
-  try { const r = await api('taskAdd', { listId: S.listId, title, due }, true); Object.assign(tmp, r.task); saveTasks(); drawTasks(); } catch (err) { T.tasks = T.tasks.filter(y => y !== tmp); drawTasks(); toast('추가 실패: ' + err.message); }
+  const rep = T.rep || '';
+  let due = T.when === 'pick' ? (T.pick || '') : nextDue(T.when); if (rep && !due) due = ymd(sod(new Date())); // 반복은 날짜가 있어야 함
+  const notes = repSet('', rep, due), tmp = { id: 'tmp' + Date.now(), listId: S.listId, title, notes, due, done: false, completed: '', parent: '' };
+  T.tasks.unshift(tmp); T.draft = ''; T.rep = ''; drawTasks(); $('#tDraft').focus(); // 반복은 한 번 쓰고 '안 함'으로 되돌림(실수로 계속 반복 만들지 않게)
+  try {
+    if (rep) { const out = await batch([{ method: 'post', url: taskUrl(S.listId), body: { title, notes, due: due + 'T00:00:00.000Z' } }]); Object.assign(tmp, mapGTask(out[0].body, S.listId)); toast(repLabel(repOf(notes)) + ' 반복으로 추가했어요'); }
+    else { const r = await api('taskAdd', { listId: S.listId, title, due }, true); Object.assign(tmp, r.task); }
+    saveTasks(); drawTasks();
+  } catch (err) { T.tasks = T.tasks.filter(y => y !== tmp); drawTasks(); toast('추가 실패: ' + err.message); }
 }
 async function taskMove(ids) {
   const due = ymd(sod(new Date()));
@@ -1198,6 +1208,7 @@ $('#main').addEventListener('click', e => {
   if ((t = q('[data-day]'))) { openDay(pymd(t.dataset.day)); return; }
   if ((t = q('[data-slot]'))) { const g = $('#wkgrid'), r = g.getBoundingClientRect(), px = Number(g.dataset.px); openCreate({ date: pymd(t.dataset.slot), min: Math.max(0, Math.min(1410, Math.floor(((e.clientY - r.top - 8) / px * 60) / 30) * 30)) }); return; }
   if ((t = q('[data-when]'))) { T.when = t.dataset.when; const d = $('#tDraft'); T.draft = d ? d.value : ''; drawTasks(); $('#tDraft').focus(); return; }
+  if ((t = q('[data-trep]'))) { T.rep = t.dataset.trep; const d = $('#tDraft'); T.draft = d ? d.value : ''; drawTasks(); $('#tDraft').focus(); return; }
   if (q('[data-tadd]')) { taskAdd(); return; }
   if ((t = q('.trow[data-tid] .tmain'))) { const x = T.tasks.find(y => y.id === t.closest('.trow').dataset.tid); if (x && !String(x.id).startsWith('tmp')) { if (S.sv && S.sv < 3) { toast('데이터 창구 업데이트 후 쓸 수 있어요'); return; } openTask(x); } return; }
   if ((t = q('[data-tt]'))) { taskMove([t.dataset.tt]); return; }
@@ -1220,6 +1231,7 @@ $('#main').addEventListener('change', e => {
   const t = e.target;
   if (t.dataset.tk) taskToggle(t.dataset.tk, t);
   if (t.dataset.gph) ganttToggle(t.dataset.gph, t);
+  if (t.id === 'tPick') { const d = $('#tDraft'); T.draft = d ? d.value : ''; if (t.value) { T.when = 'pick'; T.pick = t.value; } drawTasks(); }
 });
 $('#main').addEventListener('input', e => { if (e.target.id === 'tDraft') T.draft = e.target.value; });
 $('#main').addEventListener('keydown', e => { if (e.target.id === 'tDraft' && e.key === 'Enter' && !e.isComposing) { e.preventDefault(); taskAdd(); } });

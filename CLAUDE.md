@@ -20,7 +20,7 @@
 | `src/head.html` | HTML 머리·CSS 전부 + `<body>` 마크업 (원본) |
 | `src/script.js` | 앱 JS 전부, `<script>…</script></body></html>`로 끝남 (원본) |
 | `index.html` | **배포본 = head.html + script.js** (`./build.sh`로 생성. 직접 고치지 말 것) |
-| `version.json` | `{"v":"3.19"}` — 앱이 열릴 때 no-store로 읽어 다르면 자동 새로고침 |
+| `version.json` | `{"v":"3.20"}` — 앱이 열릴 때 no-store로 읽어 다르면 자동 새로고침 |
 | `coach.md` | AI 코치 설명서(말투·규칙). 앱이 읽어 Gemini 시스템 지시문으로 보냄. 고치면 바로 반영 |
 | `apps-script/Code.gs`, `appsscript.json` | 백엔드(구글 앱스 스크립트 웹앱 v3). 사용자 구글 계정에 배포돼 있음 |
 | `qa/qa.py`, `qa/QA.md` | 자동 검수 도구(Playwright)와 검수 규칙 |
@@ -46,7 +46,7 @@
 - `normal()`: `bar = 종일 || 24시간 이상` (수면처럼 자정 넘는 일정이 종일로 보이던 버그 수정분).
 - 간트 단계 = 종일 일정 + `extendedProperties.private {gantt:'1', proj, pname, group, idx, phase, done}`.
 - 할 일 메모 서식은 Tasks notes에 표식으로 저장: `**굵게**`, `__밑줄__`, `[[금:글자]]`(잉크색).
-- **반복 할 일(v3.19)**: Tasks API엔 반복이 없어 앱이 직접 만듦. 메모 맨 끝 줄 표식 `↻반복=daily|weekday|weekly:요일|monthly:날짜`(화면엔 안 보임, `repStrip`). 묶음 = 같은 목록+같은 제목, 규칙은 '머리'(안 끝낸 회차, 없으면 마감 가장 늦은 회차)의 표식. `repSync()`(loadTasks 뒤 자동): 지난 열린 회차 → 오늘 이후 첫 반복 날짜로 옮김 / 다 끝냈으면 그 날짜 몫 생성(생성 전 batch GET dueMin으로 중복 확인). 삭제 = 반복 멈춤(남는 최신 회차 표식 제거). 목록에 `↻ 매일 · 최근 7일 중 N번`. 앱을 열어야 회차가 생김.
+- **반복 할 일(v3.19)**: Tasks API엔 반복이 없어 앱이 직접 만듦. 메모 맨 끝 줄 표식 `↻반복=daily|weekday|weekly:요일|monthly:날짜`(화면엔 안 보임, `repStrip`). 묶음 = 같은 목록+같은 제목, 규칙은 '머리'(안 끝낸 회차, 없으면 마감 가장 늦은 회차)의 표식. `repSync()`(loadTasks 뒤 자동): 지난 열린 회차 → 오늘 이후 첫 반복 날짜로 옮김 / 다 끝냈으면 그 날짜 몫 생성(생성 전 batch GET dueMin으로 중복 확인). 삭제 = 반복 멈춤(남는 최신 회차 표식 제거). 목록에 `↻ 매일 · 최근 7일 중 N번`. 앱을 열어야 회차가 생김. **처음 등록(할 일 추가 칸)에서도 날짜(오늘·내일·다음 주 월·날짜 없음·날짜 고르기)와 반복 선택 가능(v3.20)** — 반복이면 batch POST로 메모 표식째 생성, 추가 후 반복 선택은 '안 함'으로 되돌림.
 - 이벤트·카테고리 색은 **구글 캘린더 색과 정확히 일치**해야 함 (EVC 표).
 
 ## 5. 디자인 규칙 (사용자 확정)
