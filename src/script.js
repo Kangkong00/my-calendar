@@ -1,6 +1,6 @@
 <script>
 'use strict';
-const APP_V = '3.17';
+const APP_V = '3.18';
 /* ========== 기본 도구 ========== */
 const $ = s => document.querySelector(s);
 const pad = n => String(n).padStart(2, '0');
@@ -224,7 +224,7 @@ function drawMonth(dir) {
   const rowH = (wrap.clientHeight || 600) / nW, CH = 17, GAP = 2, TOP = 26;
   const maxL = Math.max(1, Math.floor((rowH - TOP - 16) / (CH + GAP)));
   const vis = list.filter(x => !S.hiddenMonth.includes(x.calId));
-  const due = dueCount(), tk = ymd(today);
+  const due = dueCount(), tk = ymd(today), lateN = lateCount();
   let html = '';
   for (let w = 0; w < nW; w++) {
     const a = addD(start, w * 7), b = addD(a, 7);
@@ -246,7 +246,7 @@ function drawMonth(dir) {
       const hol = list.some(x => isHol(x.calId) && x.s <= d && x.e > d), td = due[ymd(d)] || 0;
       days += '<button class="mday' + (same(d, today) ? ' today' : '') + (out ? ' out' : '') + (i === 0 ? ' sun' : '') + (i === 6 ? ' sat' : '') + (hol ? ' hol' : '') + '" data-day="' + ymd(d) + '" aria-label="' + koD(d) + '"><span class="mnum">' + d.getDate() + '</span>'
         + '<span class="pills" style="top:' + (TOP + used * (CH + GAP) + 3) + 'px">' + timed.slice(0, 8).map(x => '<i class="pill" style="background:linear-gradient(180deg,' + x.color + ',' + x.color + 'C8)"></i>').join('') + '</span>'
-        + (extra ? '<span class="more">+' + extra + '</span>' : '') + (td ? tdueHTML(td, ymd(d) < tk) : '') + '</button>';
+        + (extra ? '<span class="more">+' + extra + '</span>' : '') + ((td || (lateN && same(d, today))) ? '<span class="tdues">' + (td ? tdueHTML(td, ymd(d) < tk) : '') + (lateN && same(d, today) ? lateHTML(lateN) : '') + '</span>' : '') + '</button>';
     }
     html += '<div class="mweek"><div class="mdays">' + days + '</div>' + chips + '</div>';
   }
@@ -274,9 +274,9 @@ async function renderWeek(dir) {
 function drawWeek(dir) {
   const a = addD(st.cur, -st.cur.getDay()), b = addD(a, 7), today = sod(new Date());
   const main = $('#main'), list = fromCache(a, b).filter(shown);
-  const due = dueCount();
+  const due = dueCount(), lateN = lateCount();
   let head = '<div class="wkhead"><span></span>';
-  for (let i = 0; i < 7; i++) { const d = addD(a, i); const k = ymd(d), n = due[k] || 0; head += '<button class="wkh' + (same(d, today) ? ' today' : '') + (i === 0 ? ' sun' : '') + (i === 6 ? ' sat' : '') + '" data-day="' + k + '"' + (n ? ' aria-label="' + koD(d) + ' · 할 일 ' + n + '개"' : '') + '><span>' + WD[i] + '</span><b>' + d.getDate() + '</b>' + (n ? tdueHTML(n, k < ymd(today)) : '') + '</button>'; }
+  for (let i = 0; i < 7; i++) { const d = addD(a, i); const k = ymd(d), n = due[k] || 0; head += '<button class="wkh' + (same(d, today) ? ' today' : '') + (i === 0 ? ' sun' : '') + (i === 6 ? ' sat' : '') + '" data-day="' + k + '"' + (n ? ' aria-label="' + koD(d) + ' · 할 일 ' + n + '개"' : '') + '><span>' + WD[i] + '</span><b>' + d.getDate() + '</b>' + (n ? tdueHTML(n, k < ymd(today)) : '') + (same(d, today) && lateN ? lateHTML(lateN) : '') + '</button>'; }
   head += '</div>';
   const lanes = []; let adHtml = '';
   list.filter(x => x.bar).sort((p, q) => (q.e - q.s) - (p.e - p.s)).forEach(x => {
@@ -385,12 +385,18 @@ async function openDay(d) {
 const dueOpen = () => (T.tasks || []).filter(x => x.due && !x.done);
 function dueCount() { const m = {}; dueOpen().forEach(x => { m[x.due] = (m[x.due] || 0) + 1; }); return m; }
 const tdueHTML = (n, late) => '<span class="tdue' + (late ? ' late' : '') + '" aria-hidden="true"><svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="1" y="1" width="10" height="10" rx="2.5"/><path d="M3.6 6.2l1.7 1.7 3.2-3.6"/></svg>' + n + '</span>';
+// 밀린 일 = 마감이 오늘 이전인데 아직 안 끝낸 할 일. 오늘 칸(월간)·오늘 날짜(주간)에 붉은 숫자로 모아 보여 줌
+const lateCount = () => { const t = ymd(sod(new Date())); return dueOpen().filter(x => x.due < t).length; };
+const lateHTML = n => '<span class="tdue latesum" aria-label="밀린 할 일 ' + n + '개">' + n + '</span>';
 function dayTasksHTML(k) {
+  const today = ymd(sod(new Date())), late = k < today;
   const xs = (T.tasks || []).filter(x => x.due === k).sort((a, b) => (a.done - b.done) || String(a.title).localeCompare(String(b.title)));
-  if (!xs.length) return '';
-  const late = k < ymd(sod(new Date()));
-  return '<div class="dthead"><span>할 일</span><em>' + xs.filter(x => !x.done).length + '개 남음' + (late && xs.some(x => !x.done) ? ' · 밀린 일' : '') + '</em></div>'
-    + xs.map(x => '<div class="trow dt' + (x.done ? ' done' : '') + (late && !x.done ? ' late' : '') + '" data-tid="' + esc(x.id) + '">' + ckHTML(x.title + ' 완료', 'data-tk="' + esc(x.id) + '"' + (x.done ? ' checked' : '')) + '<button class="tmain" data-a="task" data-id="' + esc(x.id) + '"><span class="ttl">' + esc(x.title) + '<i class="strike"></i></span></button></div>').join('');
+  const lt = k === today ? dueOpen().filter(x => x.due < today).sort((a, b) => a.due < b.due ? -1 : 1) : [];
+  const row = (x, isLate, sub) => '<div class="trow dt' + (x.done ? ' done' : '') + (isLate && !x.done ? ' late' : '') + '" data-tid="' + esc(x.id) + '">' + ckHTML(x.title + ' 완료', 'data-tk="' + esc(x.id) + '"' + (x.done ? ' checked' : '')) + '<button class="tmain" data-a="task" data-id="' + esc(x.id) + '"><span class="ttl">' + esc(x.title) + '<i class="strike"></i></span>' + (sub ? '<span class="tmeta">' + sub + '</span>' : '') + '</button></div>';
+  let h = '';
+  if (xs.length) h += '<div class="dthead"><span>할 일</span><em>' + xs.filter(x => !x.done).length + '개 남음' + (late && xs.some(x => !x.done) ? ' · 밀린 일' : '') + '</em></div>' + xs.map(x => row(x, late)).join('');
+  if (lt.length) h += '<div class="dthead late"><span>밀린 일</span><em>' + lt.length + '개 · 체크하면 완료, 눌러서 날짜 바꾸기</em></div>' + lt.map(x => row(x, true, koD(pymd(x.due)) + ' 까지였음')).join('');
+  return h;
 }
 function tasksChangedOnCal() {
   document.querySelectorAll('[data-daytasks]').forEach(el => { el.innerHTML = dayTasksHTML(el.dataset.daytasks); });

@@ -140,6 +140,17 @@ async def run():
         if not vis: iss.append('예시 데이터에 이번 달 마감 할 일이 없음(검사 불가)')
         if got != vis: iss.append(f'월간 할 일 표시 불일치: 기대 {vis} / 화면 {got}')
         await pg.screenshot(path=f'{OUT}/연결_월간.png')
+        lt = await pg.evaluate("() => { const t = ymd(sod(new Date())); return T.tasks.filter(x => x.due && !x.done && x.due < t).length; }")
+        red = await pg.evaluate("() => { const e = document.querySelector('.mday.today .latesum'); return e ? +e.innerText : 0; }")
+        if lt and red != lt: iss.append(f'오늘 칸 밀린 일 붉은 숫자 {red} ≠ {lt}')
+        if lt:
+            await pg.click('.mday.today'); await pg.wait_for_timeout(600)
+            n = await pg.evaluate("() => document.querySelectorAll('.sheet .dthead.late ~ .trow.late').length")
+            if n != lt: iss.append(f'오늘 시트 밀린 일 {n}개 ≠ {lt}개')
+            iss += await pg.evaluate(CHECK)
+            await pg.screenshot(path=f'{OUT}/연결_오늘시트.png')
+            await pg.evaluate('closeAll()'); await pg.wait_for_timeout(400)
+        else: iss.append('예시 데이터에 밀린 일이 없음(검사 불가)')
         day = sorted(vis.keys())[-1] if vis else None
         if day:
             await pg.click(f'.mday[data-day="{day}"]'); await pg.wait_for_timeout(600)

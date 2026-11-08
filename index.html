@@ -98,19 +98,25 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;position:relative}
 .pills{position:absolute;left:3px;right:3px;display:flex;flex-wrap:wrap;gap:3px;justify-content:center;pointer-events:none}
 .pill{width:13px;height:6px;border-radius:3px;box-shadow:0 1px 2px rgba(0,0,0,.5)}
 /* 할 일 표시 (캘린더↔할 일 연결): 월간 칸 왼쪽 아래, 주간 머리 날짜 오른쪽 위. 금색 = 남은 할 일, 붉은색 = 지난 날짜에 남은 밀린 일 */
+.tdues{position:absolute;left:3px;bottom:3px;display:flex;gap:2px;pointer-events:none}
+.tdues .tdue{position:static}
+.tdue.latesum{background:var(--sun);border-color:var(--sun);color:var(--dark);min-width:14px;justify-content:center;padding:0 3px}
+.wkh .tdue.latesum{left:auto;right:calc(50% + 6px);background:var(--sun);color:var(--dark)}
+.dthead.late span{color:var(--sun)}
+.trow.dt .tmain{display:flex;flex-direction:column;gap:1px}
 .tdue{position:absolute;left:3px;bottom:3px;display:inline-flex;align-items:center;gap:1px;height:14px;padding:0 3px 0 2px;border-radius:4px;border:1px solid rgba(227,196,142,.55);background:rgba(20,13,9,.85);color:var(--goldL);font-size:calc(9px*var(--fz,1));font-weight:700;line-height:1;pointer-events:none}
 .tdue.late{border-color:rgba(232,149,122,.6);color:var(--sun)}
 .wkh{position:relative}
-.wkh .tdue{left:calc(50% + 6px);bottom:auto;top:13px;min-width:14px;height:14px;padding:0 3px;border-radius:7px;justify-content:center;border:none;background:var(--gold);color:var(--dark);font-size:calc(8.5px*var(--fz,1));box-shadow:0 0 0 1.5px #0E0907}
+.wkh .tdue{left:calc(50% + 6px);bottom:auto;top:17px;min-width:14px;height:14px;padding:0 3px;border-radius:7px;justify-content:center;border:none;background:var(--gold);color:var(--dark);font-size:calc(8.5px*var(--fz,1));box-shadow:0 0 0 1.5px #0E0907}
 .wkh .tdue svg{display:none}
 .wkh .tdue.late{background:var(--sun);color:var(--dark)}
-.daytasks{flex-shrink:0;max-height:32%;overflow-y:auto;border-bottom:1px solid #2A1D15}
+.daytasks{flex-shrink:0;max-height:46%;overflow-y:auto;border-bottom:1px solid #2A1D15}
 .daytasks:empty{display:none}
 .dthead{display:flex;align-items:baseline;gap:8px;padding:8px 16px 2px}
 .dthead span{font-family:'Nanum Myeongjo',serif;font-weight:800;font-size:calc(13px*var(--fz,1));color:var(--goldL)}
 .dthead em{font-style:normal;font-size:calc(10.5px*var(--fz,1));color:var(--mut)}
-.trow.dt{min-height:46px;padding-left:6px;border-bottom:none}
-.trow.dt .tmain{border:none;background:transparent;text-align:left;color:inherit;padding:8px 12px 8px 0}
+.trow.dt{min-height:42px;padding-left:6px;border-bottom:none}
+.trow.dt .tmain{border:none;background:transparent;text-align:left;color:inherit;padding:6px 12px 6px 0}
 .trow.dt.late .ttl{color:var(--sun)}
 .more{position:absolute;left:0;right:0;bottom:3px;text-align:center;font-size:calc(9.5px*var(--fz,1));color:var(--mut);pointer-events:none}
 
@@ -413,7 +419,7 @@ input[type=date].inp{color-scheme:dark;min-width:0}
 </div>
 <script>
 'use strict';
-const APP_V = '3.17';
+const APP_V = '3.18';
 /* ========== 기본 도구 ========== */
 const $ = s => document.querySelector(s);
 const pad = n => String(n).padStart(2, '0');
@@ -637,7 +643,7 @@ function drawMonth(dir) {
   const rowH = (wrap.clientHeight || 600) / nW, CH = 17, GAP = 2, TOP = 26;
   const maxL = Math.max(1, Math.floor((rowH - TOP - 16) / (CH + GAP)));
   const vis = list.filter(x => !S.hiddenMonth.includes(x.calId));
-  const due = dueCount(), tk = ymd(today);
+  const due = dueCount(), tk = ymd(today), lateN = lateCount();
   let html = '';
   for (let w = 0; w < nW; w++) {
     const a = addD(start, w * 7), b = addD(a, 7);
@@ -659,7 +665,7 @@ function drawMonth(dir) {
       const hol = list.some(x => isHol(x.calId) && x.s <= d && x.e > d), td = due[ymd(d)] || 0;
       days += '<button class="mday' + (same(d, today) ? ' today' : '') + (out ? ' out' : '') + (i === 0 ? ' sun' : '') + (i === 6 ? ' sat' : '') + (hol ? ' hol' : '') + '" data-day="' + ymd(d) + '" aria-label="' + koD(d) + '"><span class="mnum">' + d.getDate() + '</span>'
         + '<span class="pills" style="top:' + (TOP + used * (CH + GAP) + 3) + 'px">' + timed.slice(0, 8).map(x => '<i class="pill" style="background:linear-gradient(180deg,' + x.color + ',' + x.color + 'C8)"></i>').join('') + '</span>'
-        + (extra ? '<span class="more">+' + extra + '</span>' : '') + (td ? tdueHTML(td, ymd(d) < tk) : '') + '</button>';
+        + (extra ? '<span class="more">+' + extra + '</span>' : '') + ((td || (lateN && same(d, today))) ? '<span class="tdues">' + (td ? tdueHTML(td, ymd(d) < tk) : '') + (lateN && same(d, today) ? lateHTML(lateN) : '') + '</span>' : '') + '</button>';
     }
     html += '<div class="mweek"><div class="mdays">' + days + '</div>' + chips + '</div>';
   }
@@ -687,9 +693,9 @@ async function renderWeek(dir) {
 function drawWeek(dir) {
   const a = addD(st.cur, -st.cur.getDay()), b = addD(a, 7), today = sod(new Date());
   const main = $('#main'), list = fromCache(a, b).filter(shown);
-  const due = dueCount();
+  const due = dueCount(), lateN = lateCount();
   let head = '<div class="wkhead"><span></span>';
-  for (let i = 0; i < 7; i++) { const d = addD(a, i); const k = ymd(d), n = due[k] || 0; head += '<button class="wkh' + (same(d, today) ? ' today' : '') + (i === 0 ? ' sun' : '') + (i === 6 ? ' sat' : '') + '" data-day="' + k + '"' + (n ? ' aria-label="' + koD(d) + ' · 할 일 ' + n + '개"' : '') + '><span>' + WD[i] + '</span><b>' + d.getDate() + '</b>' + (n ? tdueHTML(n, k < ymd(today)) : '') + '</button>'; }
+  for (let i = 0; i < 7; i++) { const d = addD(a, i); const k = ymd(d), n = due[k] || 0; head += '<button class="wkh' + (same(d, today) ? ' today' : '') + (i === 0 ? ' sun' : '') + (i === 6 ? ' sat' : '') + '" data-day="' + k + '"' + (n ? ' aria-label="' + koD(d) + ' · 할 일 ' + n + '개"' : '') + '><span>' + WD[i] + '</span><b>' + d.getDate() + '</b>' + (n ? tdueHTML(n, k < ymd(today)) : '') + (same(d, today) && lateN ? lateHTML(lateN) : '') + '</button>'; }
   head += '</div>';
   const lanes = []; let adHtml = '';
   list.filter(x => x.bar).sort((p, q) => (q.e - q.s) - (p.e - p.s)).forEach(x => {
@@ -798,12 +804,18 @@ async function openDay(d) {
 const dueOpen = () => (T.tasks || []).filter(x => x.due && !x.done);
 function dueCount() { const m = {}; dueOpen().forEach(x => { m[x.due] = (m[x.due] || 0) + 1; }); return m; }
 const tdueHTML = (n, late) => '<span class="tdue' + (late ? ' late' : '') + '" aria-hidden="true"><svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="1" y="1" width="10" height="10" rx="2.5"/><path d="M3.6 6.2l1.7 1.7 3.2-3.6"/></svg>' + n + '</span>';
+// 밀린 일 = 마감이 오늘 이전인데 아직 안 끝낸 할 일. 오늘 칸(월간)·오늘 날짜(주간)에 붉은 숫자로 모아 보여 줌
+const lateCount = () => { const t = ymd(sod(new Date())); return dueOpen().filter(x => x.due < t).length; };
+const lateHTML = n => '<span class="tdue latesum" aria-label="밀린 할 일 ' + n + '개">' + n + '</span>';
 function dayTasksHTML(k) {
+  const today = ymd(sod(new Date())), late = k < today;
   const xs = (T.tasks || []).filter(x => x.due === k).sort((a, b) => (a.done - b.done) || String(a.title).localeCompare(String(b.title)));
-  if (!xs.length) return '';
-  const late = k < ymd(sod(new Date()));
-  return '<div class="dthead"><span>할 일</span><em>' + xs.filter(x => !x.done).length + '개 남음' + (late && xs.some(x => !x.done) ? ' · 밀린 일' : '') + '</em></div>'
-    + xs.map(x => '<div class="trow dt' + (x.done ? ' done' : '') + (late && !x.done ? ' late' : '') + '" data-tid="' + esc(x.id) + '">' + ckHTML(x.title + ' 완료', 'data-tk="' + esc(x.id) + '"' + (x.done ? ' checked' : '')) + '<button class="tmain" data-a="task" data-id="' + esc(x.id) + '"><span class="ttl">' + esc(x.title) + '<i class="strike"></i></span></button></div>').join('');
+  const lt = k === today ? dueOpen().filter(x => x.due < today).sort((a, b) => a.due < b.due ? -1 : 1) : [];
+  const row = (x, isLate, sub) => '<div class="trow dt' + (x.done ? ' done' : '') + (isLate && !x.done ? ' late' : '') + '" data-tid="' + esc(x.id) + '">' + ckHTML(x.title + ' 완료', 'data-tk="' + esc(x.id) + '"' + (x.done ? ' checked' : '')) + '<button class="tmain" data-a="task" data-id="' + esc(x.id) + '"><span class="ttl">' + esc(x.title) + '<i class="strike"></i></span>' + (sub ? '<span class="tmeta">' + sub + '</span>' : '') + '</button></div>';
+  let h = '';
+  if (xs.length) h += '<div class="dthead"><span>할 일</span><em>' + xs.filter(x => !x.done).length + '개 남음' + (late && xs.some(x => !x.done) ? ' · 밀린 일' : '') + '</em></div>' + xs.map(x => row(x, late)).join('');
+  if (lt.length) h += '<div class="dthead late"><span>밀린 일</span><em>' + lt.length + '개 · 체크하면 완료, 눌러서 날짜 바꾸기</em></div>' + lt.map(x => row(x, true, koD(pymd(x.due)) + ' 까지였음')).join('');
+  return h;
 }
 function tasksChangedOnCal() {
   document.querySelectorAll('[data-daytasks]').forEach(el => { el.innerHTML = dayTasksHTML(el.dataset.daytasks); });
