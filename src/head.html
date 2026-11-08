@@ -386,8 +386,30 @@ input[type=date].inp{color-scheme:dark;min-width:0}
 .anl em.up{color:var(--goldL)}.anl em.dn{color:var(--sun)}
 .anbar{height:5px;border-radius:3px;background:#1E150F;overflow:hidden}
 .anbar i{display:block;height:100%;border-radius:3px;opacity:.85}
-/* PC·태블릿 가로 등 넓은 화면: 앱을 가운데 기둥(최대 480px)으로. 시트·알림·표지도 body 안 absolute라 같이 맞춰짐 */
-@media (min-width:700px){html{background:#030202}body{max-width:480px;margin:0 auto;border-left:1px solid var(--line2);border-right:1px solid var(--line2);box-shadow:0 0 60px rgba(0,0,0,.8)}}
+/* ===== PC·넓은 창 (폭 700px 이상, v3.21) =====
+   창 크기에 맞춰 넓게 그림(창 모드·전체 화면·창 크기 바꾸기 모두 같은 규칙). 폭 700 미만 창은 휴대폰 배치 그대로.
+   - 머리·본문은 최대 1200px 가운데, 할 일 목록은 읽기 좋게 최대 720px
+   - 아래에서 올라오는 시트 → 가운데 대화상자(최대 600px)
+   - 글자 기본 배율 0.9 → 1.0 (폭 1100+ 1.1, 1600+ 1.2, 본문 최대 1400px) */
+@media (min-width:700px){
+  :root{--fz:calc(var(--fzu,1) * 1)}
+  header,#bannerSlot,main{width:100%;max-width:1200px;margin-left:auto;margin-right:auto}
+  header{padding-left:24px;padding-right:24px}
+  .month{padding-left:16px;padding-right:16px}.wdrow{padding-left:16px;padding-right:16px}
+  .wkgrid{margin-left:16px;margin-right:16px}.wkhead{padding-left:16px;padding-right:16px}
+  #tscroll>*{max-width:720px;margin-left:auto;margin-right:auto}
+  nav{justify-content:center;gap:clamp(12px,4vw,56px)}
+  .sheet{left:0;right:0;margin:0 auto;width:min(600px,94%);top:4%;bottom:auto;max-height:92%;border-radius:22px;border:1px solid #4A3626;animation:pop .26s cubic-bezier(.2,.9,.2,1) both}
+  .sheet.closing{animation:popout .2s ease-in both}
+  .sheet .grab{visibility:hidden}
+  .toast{bottom:calc(var(--navh) + 30px)}
+}
+/* PC 글자 배율: 창이 넓을수록 조금씩 크게 (모니터는 멀리서 봄). 칸 높이(막대 17px 등)에 맞춰 최대 1.2배 */
+@media (min-width:1100px){:root{--fz:calc(var(--fzu,1) * 1.1)}}
+@media (min-width:1600px){:root{--fz:calc(var(--fzu,1) * 1.2)}header,#bannerSlot,main{max-width:1400px}}
+@keyframes pop{from{opacity:0;transform:translateY(18px) scale(.98)}to{opacity:1;transform:none}}
+@keyframes popout{to{opacity:0;transform:translateY(12px) scale(.98)}}
+@media (min-width:700px) and (hover:hover){button:not(:disabled):hover,label.pillb:hover,.mday:hover{filter:brightness(1.18)}button,label.pillb,.mday{cursor:pointer}}
 @media (max-width:370px){header{padding-left:12px;padding-right:10px;gap:6px}.hright{gap:2px}.navarrow{width:30px}.seg button{min-width:38px}.titlebox small{letter-spacing:2px}}
 #cover{position:absolute;inset:0;z-index:9999;perspective:1600px;pointer-events:auto;background:transparent}
 #cover .cv{position:absolute;inset:0;background:#0D0907 radial-gradient(ellipse at 45% 38%,#2A1C12 0%,#120C08 55%,#080504 100%);transform-origin:0 50%;will-change:transform,opacity;box-shadow:12px 0 40px rgba(0,0,0,.7)}

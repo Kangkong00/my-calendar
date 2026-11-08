@@ -112,19 +112,44 @@ async def run():
             await pg.screenshot(path=f'{OUT}/홈화면앱_{W}x{H}_새일정.png')
             report[f'홈 화면 앱 {W}x{H}'] = iss + errs
             await ctx.close()
-        # PC 넓은 화면: 가운데 기둥, 가로 스크롤 없음
-        ctx = await b.new_context(viewport={'width': 1280, 'height': 800})
-        pg = await ctx.new_page(); errs = []
+        # PC 창 크기별: 작은 창(휴대폰 배치) · 보통 창 · 노트북 · 전체 화면 모니터
+        for (W, H) in [(600, 800), (900, 650), (1280, 800), (1920, 1080)]:
+            ctx = await b.new_context(viewport={'width': W, 'height': H})
+            pg = await ctx.new_page(); errs = []; res = []
+            pg.on('pageerror', lambda e: errs.append(str(e)))
+            await pg.route('**/version.json*', lambda r: r.fulfill(status=404, body=''))
+            await pg.goto(URL); await pg.evaluate('localStorage.clear()'); await pg.reload(); await pg.wait_for_selector('#cover', state='detached', timeout=5000); await pg.wait_for_timeout(400)
+            m = await pg.evaluate("() => ({ app: document.querySelector('#app').getBoundingClientRect().width, main: document.querySelector('#main').getBoundingClientRect().width, navB: document.querySelector('nav').getBoundingClientRect().bottom })")
+            if abs(m['app'] - W) > 1: res.append(f"앱 폭 {m['app']} ≠ 창 폭 {W}")
+            if m['main'] > (1400.5 if W >= 1600 else 1200.5): res.append(f"본문 폭 {m['main']} 너무 넓음")
+            if abs(m['navB'] - H) > 1: res.append(f"하단 바가 창 아래 끝에 안 붙음 {m['navB']}")
+            res += await pg.evaluate(CHECK); await pg.screenshot(path=f'{OUT}/PC_{W}x{H}_월간.png')
+            await pg.click('#vWeek'); await pg.wait_for_timeout(800); res += await pg.evaluate(CHECK); await pg.screenshot(path=f'{OUT}/PC_{W}x{H}_주간.png')
+            await pg.keyboard.press('ArrowRight'); await pg.wait_for_timeout(700)
+            await pg.click('#vMonth'); await pg.wait_for_timeout(700)
+            await pg.click('.mday.today'); await pg.wait_for_timeout(600)
+            sr = await pg.evaluate("() => { const r = document.querySelector('.sheet').getBoundingClientRect(); return { l: r.left, r: r.right, t: r.top, b: r.bottom, w: r.width }; }")
+            if W >= 700 and (sr['w'] > 600.5 or abs((sr['l'] + sr['r']) / 2 - W / 2) > 2 or sr['t'] < 0 or sr['b'] > H + 1): res.append(f'PC 대화상자 위치 이상 {sr}')
+            if W < 700 and abs(sr['b'] - H) > 1: res.append(f'작은 창 시트가 아래에 안 붙음 {sr}')
+            res += await pg.evaluate(CHECK); await pg.screenshot(path=f'{OUT}/PC_{W}x{H}_하루.png')
+            await pg.keyboard.press('Escape'); await pg.wait_for_timeout(400)
+            if await pg.evaluate("() => sheetStack.length"): res.append('Esc로 대화상자가 안 닫힘')
+            await pg.set_viewport_size({'width': max(700, W - 200), 'height': H - 100}); await pg.wait_for_timeout(500)
+            rw = await pg.evaluate("() => { const w = document.querySelector('#mwrap'), r = w.getBoundingClientRect(), l = w.lastElementChild.getBoundingClientRect(); return { gap: r.bottom - parseFloat(getComputedStyle(w).paddingBottom) - l.bottom }; }")
+            if abs(rw['gap']) > 4: res.append(f'창 크기 바꾼 뒤 달력이 다시 맞춰지지 않음(아래 빈 곳 {rw})')
+            await pg.set_viewport_size({'width': W, 'height': H}); await pg.wait_for_timeout(400)
+            await pg.click('#nTask'); await pg.wait_for_timeout(900); res += await pg.evaluate(CHECK); await pg.screenshot(path=f'{OUT}/PC_{W}x{H}_할일.png')
+            await pg.click('#nSet'); await pg.wait_for_timeout(600); res += await pg.evaluate(CHECK); await pg.screenshot(path=f'{OUT}/PC_{W}x{H}_설정.png'); await pg.evaluate('closeAll()')
+            report[f'PC {W}x{H}'] = res + errs
+            await ctx.close()
+        # 연결 코드 왕복 (다른 기기로 옮기기)
+        ctx = await b.new_context(viewport={'width': 390, 'height': 844}); pg = await ctx.new_page(); errs = []
         pg.on('pageerror', lambda e: errs.append(str(e)))
         await pg.route('**/version.json*', lambda r: r.fulfill(status=404, body=''))
-        await pg.goto(URL); await pg.wait_for_selector('#cover', state='detached', timeout=5000); await pg.wait_for_timeout(300)
-        res = await pg.evaluate(CHECK)
-        w = await pg.evaluate("() => document.querySelector('#app').getBoundingClientRect().width")
-        if w > 481: res.append(f'PC에서 앱 폭 {w}px (480 이하 기대)')
-        await pg.screenshot(path=f'{OUT}/PC_1280x800_월간.png')
-        await pg.click('#nAdd'); await pg.wait_for_timeout(600); res += await pg.evaluate(CHECK)
-        await pg.screenshot(path=f'{OUT}/PC_1280x800_새일정.png')
-        report['PC 1280x800'] = res + errs
+        await pg.goto(URL); await pg.wait_for_timeout(1500)
+        rt = await pg.evaluate("() => { const o = { url: S.url, key: S.key, aiKey: S.aiKey }; S.url = 'https://script.google.com/macros/s/한글ABC/exec'; S.key = 'k3y-가나'; S.aiKey = 'AIza-x'; const c = codeMake(); const r = codeRead(c); Object.assign(S, o); return [r, codeRead('아무 글자'), codeRead('MYCAL1:깨진')]; }")
+        if rt != [{'url': 'https://script.google.com/macros/s/한글ABC/exec', 'key': 'k3y-가나', 'ai': 'AIza-x'}, None, None]: errs.append(f'연결 코드 왕복 이상: {rt}')
+        report['연결 코드'] = errs
         await ctx.close()
         # 캘린더↔할 일 연결 + 시작 화면 기능 검사 (390x844)
         ctx = await b.new_context(viewport={'width': 390, 'height': 844}, device_scale_factor=2, has_touch=True)

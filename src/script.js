@@ -1,6 +1,6 @@
 <script>
 'use strict';
-const APP_V = '3.20';
+const APP_V = '3.21';
 /* ========== 기본 도구 ========== */
 const $ = s => document.querySelector(s);
 const pad = n => String(n).padStart(2, '0');
@@ -1020,6 +1020,14 @@ async function gemini(prompt, maxTok) {
   throw new Error(last || '연결 실패');
 }
 
+/* --- 다른 기기로 연결 옮기기: 'MYCAL1:' + base64(JSON {url,key,ai}) --- */
+const codeMake = () => 'MYCAL1:' + btoa(unescape(encodeURIComponent(JSON.stringify({ url: S.url, key: S.key, ai: S.aiKey || '' }))));
+function codeRead(t) { if (!/^MYCAL1:/.test(t || '')) return null; try { const o = JSON.parse(decodeURIComponent(escape(atob(t.slice(7).trim())))); return o && o.url && o.key ? o : null; } catch (e) { return null; } }
+async function copyText(t) {
+  try { await navigator.clipboard.writeText(t); return true; } catch (e) {}
+  try { const ta = document.createElement('textarea'); ta.value = t; ta.style.cssText = 'position:absolute;opacity:0'; document.body.appendChild(ta); ta.select(); const ok = document.execCommand('copy'); ta.remove(); return ok; } catch (e) { return false; }
+}
+
 /* --- 화면 진단 줄 (설정 맨 아래). 실제 기기 문제를 스크린샷 한 장으로 알 수 있게 --- */
 function diagLine() {
   const d = document.documentElement, cs = getComputedStyle(d), a = $('#app'), n = $('nav');
@@ -1157,7 +1165,9 @@ function openSettings() {
   const body = () => sec('구글 캘린더 연결', '<label style="display:flex;flex-direction:column;gap:6px"><span class="lab">앱스 스크립트 웹앱 주소</span><input class="inp" id="sUrl" placeholder="https://script.google.com/macros/s/…/exec" value="' + esc(S.url) + '" autocomplete="off" autocapitalize="off"></label>'
     + '<label style="display:flex;flex-direction:column;gap:6px"><span class="lab">비밀 키</span><input class="inp" id="sKey" type="password" placeholder="setup 실행 로그에 나온 키" value="' + esc(S.key) + '" autocomplete="off" autocapitalize="off"></label>'
     + '<div class="row"><button class="gbtn" data-a="test" style="flex:1;height:46px">저장하고 연결 확인</button>' + (S.url ? '<button class="obtn" data-a="unlink" style="height:46px">연결 해제</button>' : '') + '</div>'
-    + '<p class="note">주소와 키는 이 기기에만 저장됩니다. 비워 두면 예시 데이터로 보여 줍니다.</p>' + (demo() ? '' : '<button class="obtn" data-a="refresh" style="align-self:flex-start">캘린더 목록·색 새로 불러오기</button>'))
+    + '<p class="note">주소와 키는 이 기기에만 저장됩니다. 비워 두면 예시 데이터로 보여 줍니다. <b>다른 기기(PC)에서는 연결 코드를 주소 칸에 붙여 넣으면 한 번에 연결됩니다.</b></p>'
+    + (demo() ? '' : '<button class="obtn" data-a="copycode" style="align-self:flex-start">다른 기기용 연결 코드 복사</button><p class="note" style="margin-top:-6px">코드에는 비밀 키가 들어 있어요. 나에게 보내기 같은 본인만 보는 곳으로만 옮기고, 쓴 뒤에는 지워 주세요.</p>')
+    + (installEvt ? '<button class="gbtn" data-a="install" style="height:46px">이 기기에 앱 설치</button>' : '') + (demo() ? '' : '<button class="obtn" data-a="refresh" style="align-self:flex-start">캘린더 목록·색 새로 불러오기</button>'))
     + sec('월간 화면에서 숨길 캘린더', '<p class="note">숨겨도 주간과 하루 시간표에는 그대로 보입니다.</p><div class="box">' + st.cals.map(c => '<div class="boxrow"><i style="width:10px;height:10px;border-radius:5px;background:' + c.color + '"></i><span style="flex:1;font-size:calc(14px*var(--fz,1))">' + esc(c.name) + '</span><button class="switch' + (S.hiddenMonth.includes(c.id) ? '' : ' on') + '" role="switch" aria-checked="' + !S.hiddenMonth.includes(c.id) + '" aria-label="' + esc(c.name) + ' 월간 표시" data-a="hm" data-id="' + esc(c.id) + '"><i></i></button></div>').join('') + '</div>')
     + sec('표시', '<div class="box"><div class="boxrow" style="justify-content:space-between"><span style="font-size:calc(14px*var(--fz,1))">대괄호 태그 숨기기<br><span class="lab">[Golf]골프하자 → 골프하자</span></span><button class="switch' + (S.hideTags ? ' on' : '') + '" role="switch" aria-checked="' + S.hideTags + '" aria-label="대괄호 태그 숨기기" data-a="tags"><i></i></button></div><div class="boxrow" style="justify-content:space-between"><span style="font-size:calc(14px*var(--fz,1))">캘린더에 계획 막대 보기<br><span class="lab">간트의 장기 계획을 월간·주간에도 표시</span></span><button class="switch' + (S.showPlans ? ' on' : '') + '" role="switch" aria-checked="' + S.showPlans + '" aria-label="캘린더에 계획 막대 보기" data-a="plans"><i></i></button></div></div>')
     + sec('AI 코치', '<div class="box"><div class="boxrow" style="justify-content:space-between"><span style="font-size:calc(14px*var(--fz,1))">할 일 한 줄 응원<br><span class="lab">연두색 = AI가 쓴 문장 · 옅은 갈색 = 앱 기본 문장(키 없음·연결 실패)</span></span><button class="switch' + (S.aiTip !== false ? ' on' : '') + '" role="switch" aria-checked="' + (S.aiTip !== false) + '" aria-label="할 일 한 줄 응원" data-a="aitip"><i></i></button></div></div>'
@@ -1167,7 +1177,7 @@ function openSettings() {
     + sec('글자 크기', '<div class="row" style="gap:8px">' + [[0.92, '작게'], [1, '보통'], [1.1, '크게']].map(z => '<button class="nchip' + ((S.fz || 1) === z[0] ? ' on' : '') + '" data-a="fz" data-v="' + z[0] + '" style="flex:1;justify-content:center">' + z[1] + '</button>').join('') + '</div><p class="note">앱 전체 글자에 적용됩니다. 메모장 글씨는 메모 화면에서 따로 조절합니다.</p>')
     + '<p class="note">' + diagLine() + '</p>'
     + '<div class="box"><div class="boxrow" style="justify-content:space-between"><span style="font-size:calc(14px*var(--fz,1))">화면 아래 끝까지 채우기<br><span class="lab">아래가 잘려 보이면 끄세요</span></span><button class="switch' + (!S.noGap ? ' on' : '') + '" role="switch" aria-checked="' + !S.noGap + '" aria-label="화면 아래 끝까지 채우기" data-a="gapfix"><i></i></button></div></div>'
-    + '<p class="note">화면 버전 ' + APP_V + ' · 데이터 창구 v' + (S.sv || '?') + ' · 테마 다크 레더 · PC는 가운데 기둥 배치이며, 테마 바꾸기와 PC 넓은 배치는 다음 단계에서 열립니다.</p>';
+    + '<p class="note">화면 버전 ' + APP_V + ' · 데이터 창구 v' + (S.sv || '?') + ' · 테마 다크 레더 · PC는 창 크기에 맞춰 넓게 보입니다(창 모드·전체 화면). 테마 바꾸기는 다음 단계에서 열립니다.</p>';
   let sh;
   const redraw = () => { const b = sh.querySelector('.sbody'), y = b.scrollTop; b.innerHTML = body(); b.scrollTop = y; };
   const reset = () => { M.months = {}; M.ts = {}; T.lists = null; T.tasks = []; T.ts = 0; G.phases = null; G.ts = 0; loadLocal(); const tc = store.get('tasks'); if (tc) { T.lists = tc.lists; T.tasks = tc.tasks; } G.phases = store.get('gantt'); };
@@ -1188,9 +1198,12 @@ function openSettings() {
     if (a === 'tags') { S.hideTags = !S.hideTags; save(); redraw(); render(); }
     if (a === 'plans') { S.showPlans = !S.showPlans; save(); redraw(); render(); }
     if (a === 'refresh') { try { const r = await api('calendars', { fresh: '1' }); setCals(r.calendars); M.months = {}; M.ts = {}; toast('새로 불러왔습니다'); redraw(); render(); } catch (err) { toast(err.message); } }
+    if (a === 'copycode') { copyText(codeMake()).then(ok => toast(ok ? '연결 코드를 복사했어요. PC 앱 설정의 주소 칸에 붙여 넣으세요' : '복사하지 못했어요')); return; }
+    if (a === 'install') { if (installEvt) { installEvt.prompt(); installEvt.userChoice.finally(() => { installEvt = null; redraw(); }); } return; }
     if (a === 'unlink') { S.url = ''; S.key = ''; save(); reset(); await boot(); redraw(); toast('예시 데이터로 돌아왔습니다'); }
     if (a === 'test') {
-      const url = sh.querySelector('#sUrl').value.trim(), key = sh.querySelector('#sKey').value.trim();
+      let url = sh.querySelector('#sUrl').value.trim(), key = sh.querySelector('#sKey').value.trim();
+      const code = codeRead(url); if (code) { url = code.url; key = code.key; if (code.ai && !S.aiKey) S.aiKey = code.ai; }
       if (!url || !key) { toast('주소와 키를 모두 넣어 주세요'); return; }
       const old = { url: S.url, key: S.key }; S.url = url; S.key = key;
       t.disabled = true; t.textContent = '확인 중';
@@ -1246,6 +1259,20 @@ function openUpd() {
 }
 function move(n) { const c = st.cur; st.cur = st.view === 'month' ? new Date(c.getFullYear(), c.getMonth() + n, 1) : addD(c, n * 7); render(n > 0 ? 'l' : 'r'); }
 $('#anBtn').onclick = () => openAnalysis(); $('#prevBtn').onclick = () => move(-1); $('#nextBtn').onclick = () => move(1);
+// PC 키보드: Esc = 대화상자 닫기, ←/→ = 이전·다음 달(주). 글자 입력 중에는 동작 안 함
+document.addEventListener('keydown', e => {
+  const a = document.activeElement, typing = a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.tagName === 'SELECT' || a.isContentEditable);
+  if (e.key === 'Escape' && sheetStack.length) { e.preventDefault(); closeSheet(); return; }
+  if (typing || sheetStack.length || st.tab !== 'cal' || e.altKey || e.ctrlKey || e.metaKey) return;
+  if (e.key === 'ArrowLeft') { e.preventDefault(); move(-1); } else if (e.key === 'ArrowRight') { e.preventDefault(); move(1); }
+});
+// 창 크기가 바뀌면(PC 창 크기 조절·전체 화면·가로세로 회전) 달력 칸 높이를 다시 계산. 아이폰 키보드(높이만 바뀜)는 무시
+let lastW = innerWidth, rsT = 0;
+addEventListener('resize', () => { clearTimeout(rsT); rsT = setTimeout(() => { const wide = innerWidth >= 700; if ((innerWidth !== lastW || wide) && st.tab === 'cal') { if (st.view === 'month') drawMonth(); else drawWeek(); } lastW = innerWidth; }, 150); });
+// PC·안드로이드 설치(크롬·엣지): 설치 가능하면 설정에 '이 기기에 앱 설치' 버튼
+let installEvt = null;
+addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; });
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 $('#titleBtn').onclick = () => { if (st.tab !== 'cal') return; st.cur = sod(new Date()); render(); };
 $('#vMonth').onclick = () => { if (st.view === 'month') return; transit('down', () => { st.view = 'month'; S.view = 'month'; save(); render(); }); };
 $('#vWeek').onclick = () => { if (st.view === 'week') return; transit('up', () => { const t = new Date(); st.cur = (t.getMonth() === st.cur.getMonth() && t.getFullYear() === st.cur.getFullYear()) ? sod(t) : new Date(st.cur.getFullYear(), st.cur.getMonth(), 1); st.view = 'week'; S.view = 'week'; save(); render(); }); };
