@@ -20,9 +20,9 @@
 | `src/head.html` | HTML 머리·CSS 전부 + `<body>` 마크업 (원본) |
 | `src/script.js` | 앱 JS 전부, `<script>…</script></body></html>`로 끝남 (원본) |
 | `index.html` | **배포본 = head.html + script.js** (`./build.sh`로 생성. 직접 고치지 말 것) |
-| `version.json` | `{"v":"3.21"}` — 앱이 열릴 때 no-store로 읽어 다르면 자동 새로고침 |
+| `version.json` | `{"v":"3.22"}` — 앱이 열릴 때 no-store로 읽어 다르면 자동 새로고침 |
 | `coach.md` | AI 코치 설명서(말투·규칙). 앱이 읽어 Gemini 시스템 지시문으로 보냄. 고치면 바로 반영 |
-| `apps-script/Code.gs`, `appsscript.json` | 백엔드(구글 앱스 스크립트 웹앱 v3). 사용자 구글 계정에 배포돼 있음 |
+| `apps-script/Code.gs`, `appsscript.json` | 백엔드(구글 앱스 스크립트 웹앱, ping v4). 사용자 구글 계정에 배포돼 있음. **v4(앱 화면 중계)는 사용자 재배포 필요 — README 맨 위** |
 | `qa/qa.py`, `qa/QA.md` | 자동 검수 도구(Playwright)와 검수 규칙 |
 | `splash/*.png`, `splash/cover*.jpg` | iOS 시작 화면 11종 + 앱 안 표지 이미지 |
 | `tools/cover.html` | 표지 원본 디자인 (글꼴: npm `@fontsource/unifrakturmaguntia`, 경로는 로컬에 맞게 수정) |
@@ -91,6 +91,7 @@
 - 창 크기 바뀌면 달력 다시 그림(폭이 바뀌었거나 넓은 창일 때만 — 아이폰 키보드 높이 변화는 무시).
 - 키보드: Esc 대화상자 닫기, ←/→ 이전·다음 달(주) (입력 중·대화상자 열림 시 무시).
 - 설치: manifest(id, 192·512 아이콘, orientation 없음) + `sw.js`. 설정에 `beforeinstallprompt` 받으면 '이 기기에 앱 설치' 버튼.
+- **회사 PC(github.io 차단) = 구글 주소로 열기(v3.22/백엔드 v4)**: `doGet`에 action이 없으면 `appPage_()`가 GitHub Pages의 최신 index.html을 UrlFetch로 받아 `<base href=github>` + `window.__APP_HOST='gas'`, `__BACKEND_URL` 주입 후 HtmlService로 보여 줌(iframe, googleusercontent). 비밀 키는 안 넣음. 앱은 `viaGas()`면 업데이트 확인 생략, 설정 주소 칸 미리 채움. github 막힌 곳에선 표지 그림·coach.md만 빠짐(기능 같음). 앱 업데이트 때 재배포 불필요. qa.py가 iframe+github 차단으로 흉내 검사.
 - 연결 옮기기: 설정 '다른 기기용 연결 코드 복사' = `MYCAL1:`+base64(JSON{url,key,ai}). 주소 칸에 붙여 넣으면 `codeRead`로 풀어 연결. 비밀 키 포함 → 본인만 보는 곳으로 옮기라고 안내.
 
 ## 8. 남은 일 / 확인 필요
@@ -101,4 +102,5 @@
 - [확인 필요] 손글씨 글꼴 실제 표시(테스트 환경에서 차단됨), iOS 시작 화면 이미지 지원 여부
 - [확인 필요] v3.19 반복 할 일이 실제 구글 Tasks에서 다음 날 1개만 생기는지(두 기기 동시 실행 포함), 구글 Tasks 앱에서 표식 줄이 보이는 모양
 - [확인 필요] v3.21 PC 크롬·엣지에서 설치 아이콘이 뜨는지, 설치 후 창 모드·최대화·전체 화면 표시
+- [사용자 작업 대기] 백엔드 v4 재배포(README 맨 위). [확인 필요] 실제 회사 PC에서 앱스 스크립트 주소로 앱이 열리는지, iframe 안 localStorage 유지, 구글 회색 안내 줄 높이
 - 예정: PC에서 달력+할 일 나란히 보기(지금은 탭 전환), 테마 바꾸기, 노션 연동 검토

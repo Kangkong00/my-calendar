@@ -30,7 +30,28 @@ function setup() {
 
 function resetKey() { PropertiesService.getScriptProperties().deleteProperty('API_KEY'); setup(); }
 
-function doGet(e) { return handle_(e.parameter || {}); }
+function doGet(e) {
+  var p = e.parameter || {};
+  if (!p.action) return appPage_(); // 요청 없이 주소만 열면 앱 화면 (github.io가 막힌 회사 PC용, v4)
+  return handle_(p);
+}
+
+/* 앱 화면 중계 (v4): GitHub Pages의 최신 index.html을 구글 서버가 대신 받아서 보여 준다.
+   - 화면은 매번 최신(앱 업데이트 때 이 스크립트를 다시 배포할 필요 없음)
+   - 비밀 키는 넣지 않음(주소만 알아서는 데이터 접근 불가). 처음 한 번 앱 설정에 연결 코드를 붙여 넣으면 됨
+   - 이미지 등은 <base>로 원래 주소를 가리킴 → github가 막힌 곳에선 표지 그림만 빠지고 기능은 그대로 */
+var APP_BASE_ = 'https://kangkong00.github.io/my-calendar/';
+function appPage_() {
+  var html = null;
+  try {
+    var r = UrlFetchApp.fetch(APP_BASE_ + 'index.html?t=' + Date.now(), { muteHttpExceptions: true, followRedirects: true });
+    if (r.getResponseCode() === 200) html = r.getContentText('UTF-8');
+  } catch (err) {}
+  if (!html) return HtmlService.createHtmlOutput('<p style="font-family:sans-serif;padding:24px">앱 화면을 불러오지 못했어요. 잠시 뒤 다시 열어 주세요.</p>').setTitle('나만의 캘린더');
+  var inject = '<base href="' + APP_BASE_ + '"><script>window.__APP_HOST="gas";window.__BACKEND_URL=' + JSON.stringify(ScriptApp.getService().getUrl()) + ';</script>';
+  html = html.replace(/<head>/i, '<head>' + inject);
+  return HtmlService.createHtmlOutput(html).setTitle('나만의 캘린더').addMetaTag('viewport', 'width=device-width, initial-scale=1');
+}
 function doPost(e) {
   var body = {};
   try { body = JSON.parse(e.postData.contents || '{}'); } catch (err) { return out_({ ok: false, error: '요청 형식 오류' }); }
@@ -42,7 +63,7 @@ function handle_(p) {
     var key = PropertiesService.getScriptProperties().getProperty('API_KEY');
     if (!key || p.key !== key) return out_({ ok: false, error: '비밀 키가 맞지 않습니다' });
     switch (p.action) {
-      case 'ping': return out_({ ok: true, v: 3 });
+      case 'ping': return out_({ ok: true, v: 4 });
       case 'batch': return out_({ ok: true, results: batch_(p.requests) });
       case 'calendars': return out_({ ok: true, calendars: calendars_(p.fresh === '1' || p.fresh === true) });
       case 'events': return out_({ ok: true, events: events_(p.start, p.end) });

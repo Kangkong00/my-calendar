@@ -1,6 +1,6 @@
 <script>
 'use strict';
-const APP_V = '3.21';
+const APP_V = '3.22';
 /* ========== 기본 도구 ========== */
 const $ = s => document.querySelector(s);
 const pad = n => String(n).padStart(2, '0');
@@ -1162,10 +1162,11 @@ async function openAnalysis(kind0) {
 }
 
 function openSettings() {
-  const body = () => sec('구글 캘린더 연결', '<label style="display:flex;flex-direction:column;gap:6px"><span class="lab">앱스 스크립트 웹앱 주소</span><input class="inp" id="sUrl" placeholder="https://script.google.com/macros/s/…/exec" value="' + esc(S.url) + '" autocomplete="off" autocapitalize="off"></label>'
+  const body = () => sec('구글 캘린더 연결', '<label style="display:flex;flex-direction:column;gap:6px"><span class="lab">앱스 스크립트 웹앱 주소</span><input class="inp" id="sUrl" placeholder="https://script.google.com/macros/s/…/exec" value="' + esc(S.url || (viaGas() && window.__BACKEND_URL) || '') + '" autocomplete="off" autocapitalize="off"></label>'
     + '<label style="display:flex;flex-direction:column;gap:6px"><span class="lab">비밀 키</span><input class="inp" id="sKey" type="password" placeholder="setup 실행 로그에 나온 키" value="' + esc(S.key) + '" autocomplete="off" autocapitalize="off"></label>'
     + '<div class="row"><button class="gbtn" data-a="test" style="flex:1;height:46px">저장하고 연결 확인</button>' + (S.url ? '<button class="obtn" data-a="unlink" style="height:46px">연결 해제</button>' : '') + '</div>'
     + '<p class="note">주소와 키는 이 기기에만 저장됩니다. 비워 두면 예시 데이터로 보여 줍니다. <b>다른 기기(PC)에서는 연결 코드를 주소 칸에 붙여 넣으면 한 번에 연결됩니다.</b></p>'
+    + (demo() ? '' : '<p class="note">github 주소가 막힌 곳(회사 PC 등)에서는 <b>위 앱스 스크립트 주소를 그대로 크롬에서 열면</b> 앱이 열립니다(데이터 창구 v4 이상).' + (S.sv && S.sv < 4 ? ' <span style="color:var(--sun)">지금 데이터 창구는 v' + S.sv + ' → 업데이트가 필요해요.</span>' : '') + '</p>')
     + (demo() ? '' : '<button class="obtn" data-a="copycode" style="align-self:flex-start">다른 기기용 연결 코드 복사</button><p class="note" style="margin-top:-6px">코드에는 비밀 키가 들어 있어요. 나에게 보내기 같은 본인만 보는 곳으로만 옮기고, 쓴 뒤에는 지워 주세요.</p>')
     + (installEvt ? '<button class="gbtn" data-a="install" style="height:46px">이 기기에 앱 설치</button>' : '') + (demo() ? '' : '<button class="obtn" data-a="refresh" style="align-self:flex-start">캘린더 목록·색 새로 불러오기</button>'))
     + sec('월간 화면에서 숨길 캘린더', '<p class="note">숨겨도 주간과 하루 시간표에는 그대로 보입니다.</p><div class="box">' + st.cals.map(c => '<div class="boxrow"><i style="width:10px;height:10px;border-radius:5px;background:' + c.color + '"></i><span style="flex:1;font-size:calc(14px*var(--fz,1))">' + esc(c.name) + '</span><button class="switch' + (S.hiddenMonth.includes(c.id) ? '' : ' on') + '" role="switch" aria-checked="' + !S.hiddenMonth.includes(c.id) + '" aria-label="' + esc(c.name) + ' 월간 표시" data-a="hm" data-id="' + esc(c.id) + '"><i></i></button></div>').join('') + '</div>')
@@ -1207,7 +1208,7 @@ function openSettings() {
       if (!url || !key) { toast('주소와 키를 모두 넣어 주세요'); return; }
       const old = { url: S.url, key: S.key }; S.url = url; S.key = key;
       t.disabled = true; t.textContent = '확인 중';
-      try { const r = await api('ping'); if (r.v !== 2) toast('데이터 창구가 옛 버전입니다. 앱스 스크립트를 업데이트해 주세요'); save(); reset(); await boot(); toast('연결되었습니다'); redraw(); }
+      try { const r = await api('ping'); if ((r.v || 1) < 3) toast('데이터 창구가 옛 버전입니다. 앱스 스크립트를 업데이트해 주세요'); save(); reset(); await boot(); toast('연결되었습니다'); redraw(); }
       catch (err) { S.url = old.url; S.key = old.key; toast('연결 실패: ' + err.message); t.disabled = false; t.textContent = '저장하고 연결 확인'; }
     }
   });
@@ -1317,7 +1318,10 @@ document.addEventListener('visibilitychange', () => {
 });
 
 /* 새 화면 버전이 올라오면 저절로 새로 고침 */
+// 구글 주소(앱스 스크립트)로 연 경우: 화면은 열 때마다 최신을 받아 오므로 업데이트 확인 안 함(iframe 안이라 새로고침도 불안정)
+const viaGas = () => window.__APP_HOST === 'gas';
 async function checkUpdate() {
+  if (viaGas()) return;
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' });
     if (!r.ok) return; const j = await r.json();

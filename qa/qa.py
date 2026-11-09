@@ -250,6 +250,34 @@ async def run():
         if u != [False, True, True, True, False, '2026-11-09', '2026-11-09', '메모\n↻반복=weekly:1', '메모']: iss.append(f'반복 규칙 계산 이상: {u}')
         report['반복 할 일'] = iss + errs
         await ctx.close()
+        # 회사 PC 흉내: 앱스 스크립트가 보여 주는 화면(iframe 안) + github.io 완전 차단 (Code.gs appPage_와 같은 변환)
+        import re as _re
+        src = await (await b.new_context()).new_page()
+        page_html = await (await src.goto(URL)).text(); await src.context.close()
+        page_html = _re.sub(r'<head>', '<head><base href="https://kangkong00.github.io/my-calendar/"><script>window.__APP_HOST="gas";window.__BACKEND_URL="https://script.google.com/macros/s/TEST/exec";</script>', page_html, count=1, flags=_re.I)
+        outer = '<!doctype html><html><body style="margin:0"><iframe id="f" src="https://n-x-script.googleusercontent.test/p" style="border:0;width:100vw;height:100vh" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"></iframe></body></html>'
+        ctx = await b.new_context(viewport={'width': 1280, 'height': 800}); errs = []; iss = []
+        async def gr(r):
+            u = r.request.url
+            if 'github.io' in u: return await r.abort()
+            if u.startswith('https://script.google.test/'): return await r.fulfill(status=200, body=outer, content_type='text/html')
+            if 'googleusercontent.test' in u: return await r.fulfill(status=200, body=page_html, content_type='text/html')
+            return await r.continue_()
+        await ctx.route('**/*', gr)
+        pg = await ctx.new_page(); pg.on('pageerror', lambda e: errs.append(str(e)))
+        await pg.goto('https://script.google.test/macros/s/TEST/exec'); await pg.wait_for_timeout(5000)
+        fr = [x for x in pg.frames if 'googleusercontent' in x.url]
+        if not fr: iss.append('iframe 안 열림')
+        else:
+            fr = fr[0]
+            g = await fr.evaluate("() => ({ month: !!document.querySelector('#mwrap .mday'), cover: !!document.getElementById('cover'), gas: viaGas(), url: location.href })")
+            if not (g['month'] and not g['cover'] and g['gas'] and 'googleusercontent' in g['url']): iss.append(f'구글 주소 화면 이상: {g}')
+            await fr.click('#nSet'); await pg.wait_for_timeout(600)
+            if await fr.evaluate("() => document.querySelector('#sUrl').value") != 'https://script.google.com/macros/s/TEST/exec': iss.append('주소 칸 미리 채움 안 됨')
+            iss += await fr.evaluate(CHECK)
+            await pg.screenshot(path=f'{OUT}/회사PC_구글주소.png')
+        report['회사 PC(github 차단, 구글 주소로 열기)'] = iss + errs
+        await ctx.close()
         await b.close()
     bad = {k: v for k, v in report.items() if v}
     print(json.dumps(bad, ensure_ascii=False, indent=1) if bad else '검수 통과: 문제 없음')
