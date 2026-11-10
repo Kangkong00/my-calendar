@@ -1,6 +1,6 @@
 <script>
 'use strict';
-const APP_V = '3.24';
+const APP_V = '3.25';
 /* ========== 기본 도구 ========== */
 const $ = s => document.querySelector(s);
 const pad = n => String(n).padStart(2, '0');
@@ -116,8 +116,12 @@ const Demo = (() => {
 /* ========== 서버 통신 ========== */
 let busy = 0;
 const syncDot = () => { const m = $('#main'); let d = m.querySelector('.sync'); if (busy > 0 && !d) { d = document.createElement('i'); d.className = 'sync'; m.appendChild(d); } if (busy <= 0 && d) d.remove(); };
+// 쓰기 세대(WGEN): 쓰기(POST)가 시작·끝날 때마다 올라감. 읽기(일정·할 일·계획 새로고침)는 시작할 때 값을 기억했다가
+// 응답이 왔을 때 값이 달라졌으면(=읽는 사이에 뭔가 저장됨) 그 응답을 버리고 다시 읽음.
+// → 방금 체크·추가·수정한 내용이 '저장 전에 떠난 새로고침'의 옛 데이터로 덮이지 않음 (v3.25)
+let WGEN = 0;
 async function api(action, params = {}, post = false) {
-  busy++; syncDot();
+  busy++; syncDot(); if (post) WGEN++;
   try {
     if (demo()) { await new Promise(r => setTimeout(r, 150)); const r = Demo[action](JSON.parse(JSON.stringify(params))); if (!r.ok) throw new Error(r.error); return JSON.parse(JSON.stringify(r)); }
     let res; const ac = new AbortController(), to = setTimeout(() => ac.abort(), 30000);
@@ -129,7 +133,7 @@ async function api(action, params = {}, post = false) {
     let j; try { j = await res.json(); } catch (e) { throw new Error('서버 응답을 읽지 못했어요 (' + res.status + ')'); }
     if (!j.ok) throw new Error(j.error || '오류');
     return j;
-  } finally { busy--; syncDot(); }
+  } finally { busy--; syncDot(); if (post) WGEN++; }
 }
 function toast(msg) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 2500); }
 
@@ -155,10 +159,14 @@ async function fetchMonths(keys) {
   keys = keys.slice().sort(); const pk = keys.join(',');
   if (M.pending[pk]) return M.pending[pk];
   const s = monthStart(keys[0]), e = new Date(monthStart(keys[keys.length - 1]).getFullYear(), monthStart(keys[keys.length - 1]).getMonth() + 1, 1);
+  const g0 = WGEN;
   M.pending[pk] = api('events', { start: isoLocal(s), end: isoLocal(e) }).then(r => {
     const before = keys.map(k => JSON.stringify(M.months[k] || null)).join('');
-    keys.forEach(k => { M.months[k] = []; M.ts[k] = Date.now(); });
-    r.events.forEach(ev => { const n = normal(ev); keys.forEach(k => { const a = monthStart(k), b = new Date(a.getFullYear(), a.getMonth() + 1, 1); if (n.s < b && n.e > a) M.months[k].push(ev); }); });
+    // 읽는 사이에 저장이 있었으면: 이미 화면에 있는 달은 그대로 두고(방금 넣은 일정 보호) 곧 다시 읽음. 처음 여는 달은 일단 보여 줌
+    const raced = g0 !== WGEN, use = raced ? keys.filter(k => !M.months[k]) : keys;
+    if (raced) { keys.forEach(k => { M.ts[k] = 0; }); setTimeout(() => fetchMonths(keys).then(ch => { if (ch && st.tab === 'cal') { if (st.view === 'month') drawMonth(); else drawWeek(); } }).catch(() => {}), 1200); }
+    use.forEach(k => { M.months[k] = []; M.ts[k] = raced ? 0 : Date.now(); });
+    r.events.forEach(ev => { const n = normal(ev); use.forEach(k => { const a = monthStart(k), b = new Date(a.getFullYear(), a.getMonth() + 1, 1); if (n.s < b && n.e > a) M.months[k].push(ev); }); });
     persistMonths();
     return keys.map(k => JSON.stringify(M.months[k])).join('') !== before;
   }).finally(() => { delete M.pending[pk]; });
@@ -686,7 +694,11 @@ const T = { lists: null, tasks: [], when: 'today', pick: '', rep: '', draft: '',
 const saveTasks = () => store.set('tasks', { lists: T.lists, tasks: T.tasks });
 async function loadTasks(force) {
   if (!force && T.lists && Date.now() - T.ts < 60000) return false;
-  const r = await api('tasks'); const before = JSON.stringify(T.tasks);
+  const g0 = WGEN, r = await api('tasks'), before = JSON.stringify(T.tasks);
+  if (g0 !== WGEN && T.lists) { // 읽는 사이에 체크·추가·수정이 있었음 → 이 응답은 버리고 곧 다시 읽음
+    T.ts = 0; clearTimeout(T.retry); T.retry = setTimeout(() => loadTasks(true).then(ch => { if (ch) drawTasks(); }).catch(() => {}), 1200);
+    return false;
+  }
   T.lists = r.lists; T.tasks = r.tasks; T.ts = Date.now(); saveTasks();
   if (!S.listId || !T.lists.find(l => l.id === S.listId)) { S.listId = (T.lists[0] || {}).id || ''; save(); }
   setTimeout(repSync, 0);
@@ -843,6 +855,7 @@ function openTask(x) {
 const nextDue = w => { const t = sod(new Date()); if (w === 'today') return ymd(t); if (w === 'tomorrow') return ymd(addD(t, 1)); if (w === 'nextmon') return ymd(addD(t, ((8 - t.getDay()) % 7) || 7)); return ''; };
 async function taskToggle(id, el) {
   const x = T.tasks.find(y => y.id === id); if (!x) return;
+  if (String(id).startsWith('tmp')) { el.checked = x.done; toast('저장 중이에요. 잠시 뒤 다시 눌러 주세요'); return; } // 아직 구글에 만들어지는 중
   const done = !x.done, rowEl = el.closest('.trow');
   x.done = done; x.completed = done ? new Date().toISOString() : ''; saveTasks();
   rowEl.classList.remove('jd', 'ju'); void rowEl.offsetWidth;
@@ -873,7 +886,8 @@ const G = { phases: null, zoom: 1, filter: 'all', sel: '', ts: 0 };
 (() => { const c = store.get('gantt'); if (c) G.phases = c; })();
 async function loadGantt(force) {
   if (!force && G.phases && Date.now() - G.ts < 60000) return false;
-  const r = await api('gantt'); const before = JSON.stringify(G.phases);
+  const g0 = WGEN, r = await api('gantt'), before = JSON.stringify(G.phases);
+  if (g0 !== WGEN && G.phases) { G.ts = 0; return false; }
   G.phases = r.phases; G.ts = Date.now(); store.set('gantt', G.phases); return JSON.stringify(G.phases) !== before;
 }
 function projects() {

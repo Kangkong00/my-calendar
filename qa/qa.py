@@ -201,6 +201,14 @@ async def run():
         await pg.route('**/version.json*', lambda r: r.fulfill(status=404, body=''))
         await pg.goto(URL); await pg.evaluate('localStorage.clear()'); await pg.reload(); await pg.wait_for_selector('#cover', state='detached', timeout=5000)
         await pg.click('#nTask'); await pg.wait_for_timeout(1000)
+        # 경합: 새로고침이 떠 있는 동안 체크/일정 추가 → 덮이지 않아야 함
+        rc = await pg.evaluate("""async () => { const row = document.querySelector('#main .trow[data-tid]:not(.done)'), id = row.dataset.tid, el = row.querySelector('input'); const p = loadTasks(true); el.checked = true; taskToggle(id, el); await p; const mid = T.tasks.find(y => y.id === id).done; await new Promise(r => setTimeout(r, 2600)); const end = T.tasks.find(y => y.id === id).done;
+          const x = T.tasks.find(y => y.id === id); await api('taskUpdate', { listId: x.listId, id, patch: { done: false } }, true); await loadTasks(true); drawTasks(); return { mid, end }; }""")
+        if rc != {'mid': True, 'end': True}: iss.append(f'새로고침 중 체크가 되돌아감: {rc}')
+        rc2 = await pg.evaluate("""async () => { const k = mkey(new Date()), cal = st.cals.find(c => c.owned && !isHol(c.id)).id, t = sod(new Date()); await ensure(t, addD(t, 1)); const p = fetchMonths([k]);
+          const r = await api('create', { event: { calId: cal, title: 'QA경합일정', allDay: true, start: ymd(t), end: ymd(addD(t, 1)), alarms: [] } }, true); cacheAdd([r.event]); await p;
+          const n = () => fromCache(t, addD(t, 1)).filter(x => x.title === 'QA경합일정').length; const mid = n(); await new Promise(r => setTimeout(r, 2200)); const end = n(); await api('delete', { calId: cal, id: r.event.id }, true); cacheRemove(r.event); return { mid, end }; }""")
+        if rc2 != {'mid': 1, 'end': 1}: iss.append(f'새로고침 중 추가한 일정이 사라지거나 겹침: {rc2}')
         # 완료 시각(UTC) → 기기 날짜 비교: 한국 시간 아침에 끝낸 오늘 할 일이 '오늘' 목록에 남아 있어야 함
         tzr = await pg.evaluate("""() => { const t = sod(new Date()), k = ymd(t), lid = S.listId; const early = new Date(t.getTime() + 60000).toISOString(), old = new Date(t.getTime() - 2 * 864e5).toISOString();
           T.tasks.unshift({ id: 'qa1', listId: lid, title: 'QA아침완료', notes: '', due: k, done: true, completed: early, parent: '' }, { id: 'qa2', listId: lid, title: 'QA미리완료', notes: '', due: k, done: true, completed: old, parent: '' });
