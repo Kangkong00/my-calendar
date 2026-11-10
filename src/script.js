@@ -1,6 +1,6 @@
 <script>
 'use strict';
-const APP_V = '3.22';
+const APP_V = '3.23';
 /* ========== 기본 도구 ========== */
 const $ = s => document.querySelector(s);
 const pad = n => String(n).padStart(2, '0');
@@ -707,9 +707,11 @@ function drawTasks() {
   const mine = T.tasks.filter(x => x.listId === lid && !x.parent);
   const subs = id => T.tasks.filter(x => x.parent === id).length;
   const open = mine.filter(x => !x.done), late = open.filter(x => x.due && x.due < today);
-  const tdy = mine.filter(x => x.due === today && (!x.done || (x.completed || '').slice(0, 10) >= today || !x.completed));
+  // 완료 시각은 구글이 UTC로 줌 → 반드시 이 기기 날짜로 바꿔 비교 (v3.23: 한국 0~9시에 끝낸 일이 전날로 계산돼 목록에서 사라지던 버그)
+  const doneDay = x => { if (!x.completed) return ''; const d = new Date(x.completed); return isNaN(d) ? '' : ymd(d); };
+  const tdy = mine.filter(x => x.due === today && (!x.done || !x.completed || doneDay(x) >= today));
   const up = open.filter(x => x.due > today).sort((a, b) => a.due < b.due ? -1 : 1), none = open.filter(x => !x.due);
-  const doneOld = mine.filter(x => x.done && x.due !== today);
+  const doneOld = mine.filter(x => x.done && !tdy.includes(x)); // 오늘 마감인데 며칠 전에 미리 끝낸 일도 여기(완료됨)에 보이게
   const tot = tdy.length, dn = tdy.filter(x => x.done).length, pct = tot ? Math.round(dn / tot * 100) : 0;
   const dl = s => { const d = pymd(s); return koD(d); };
   const row = (x, kind) => { const lt = !x.done && x.due && x.due < today; const meta = [lt ? dl(x.due) + ' 까지였음' : '', kind === 'up' ? dl(x.due) : '', subs(x.id) ? '하위 ' + subs(x.id) + '개' : ''].filter(Boolean).join(' · '); const memo = plainNote(x.notes).split('\n').find(l => l.trim()) || '', tip = tipFor(x), rr = repOf(x.notes);

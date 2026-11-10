@@ -201,6 +201,13 @@ async def run():
         await pg.route('**/version.json*', lambda r: r.fulfill(status=404, body=''))
         await pg.goto(URL); await pg.evaluate('localStorage.clear()'); await pg.reload(); await pg.wait_for_selector('#cover', state='detached', timeout=5000)
         await pg.click('#nTask'); await pg.wait_for_timeout(1000)
+        # 완료 시각(UTC) → 기기 날짜 비교: 한국 시간 아침에 끝낸 오늘 할 일이 '오늘' 목록에 남아 있어야 함
+        tzr = await pg.evaluate("""() => { const t = sod(new Date()), k = ymd(t), lid = S.listId; const early = new Date(t.getTime() + 60000).toISOString(), old = new Date(t.getTime() - 2 * 864e5).toISOString();
+          T.tasks.unshift({ id: 'qa1', listId: lid, title: 'QA아침완료', notes: '', due: k, done: true, completed: early, parent: '' }, { id: 'qa2', listId: lid, title: 'QA미리완료', notes: '', due: k, done: true, completed: old, parent: '' });
+          T.showDone = true; drawTasks(); const txt = g => [...document.querySelectorAll(g)].map(e => e.innerText).join('|');
+          const groups = [...document.querySelectorAll('.tgroup')].find(g => g.querySelector('h3').innerText.startsWith('오늘')); const r = { today: groups.innerText.includes('QA아침완료'), earlyInToday: groups.innerText.includes('QA미리완료'), all: document.querySelector('#tscroll').innerText.includes('QA미리완료') };
+          T.tasks = T.tasks.filter(x => !String(x.id).startsWith('qa')); T.showDone = false; drawTasks(); return r; }""")
+        if tzr != {'today': True, 'earlyInToday': False, 'all': True}: iss.append(f'완료 시각 날짜 비교 이상: {tzr}')
         T0 = '기출 1회 풀기'
         # 처음 등록부터 날짜·반복: 날짜 고르기 + 매주 → 추가
         await pg.fill('#tDraft', '영어 단어 30개')
