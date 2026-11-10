@@ -1,6 +1,6 @@
 <script>
 'use strict';
-const APP_V = '3.27';
+const APP_V = '3.28';
 /* ========== 기본 도구 ========== */
 const $ = s => document.querySelector(s);
 const pad = n => String(n).padStart(2, '0');
@@ -748,20 +748,27 @@ function drawTasks() {
     return '<div class="trow' + (x.done ? ' done' : '') + (lt ? ' late' : '') + '" data-tid="' + esc(x.id) + '"><i class="shine"></i>' + ckHTML(x.title + ' 완료', 'data-tk="' + esc(x.id) + '"' + (x.done ? ' checked' : '')) + '<div class="tmain"><span class="ttl">' + esc(x.title) + '<i class="strike"></i></span>' + (meta || rr ? '<span class="tmeta">' + (rr ? repBadge(x, rr) + (meta ? ' · ' : '') : '') + esc(meta) + '</span>' : '') + (memo ? '<span class="tmemo" style="font-family:' + NF(S.noteFont || 'pen')[2] + '">' + esc(memo) + '</span>' : '') + (tip ? '<span class="tai' + (tip.ai ? '' : ' rule') + '">' + esc(tip.t) + '</span>' : '') + '</div>' + (lt ? '<button class="tside" data-tt="' + esc(x.id) + '">오늘로</button>' : '') + '</div>'; };
   const grp = (title, cls, items, kind, extra) => '<div class="tgroup"><div class="tgh"><h3 class="serif ' + cls + '">' + title + '<small>' + items.length + '개</small></h3>' + (extra || '') + '</div><div class="tlist">' + (items.length ? items.map(x => row(x, kind)).join('') : '<div class="note" style="padding:14px;text-align:center">비어 있어요</div>') + '</div></div>';
   const W = [['today', '오늘'], ['tomorrow', '내일'], ['nextmon', '다음 주 월'], ['none', '날짜 없음']];
-  let h = '<div class="scroller" id="tscroll"><div class="prog"><div class="t"><span>오늘 ' + dn + ' / ' + tot + ' 완료</span><span>' + pct + '%</span></div><div class="b"><i style="width:' + pct + '%"></i></div></div>'
-    + '<div class="qadd"><div class="r"><input id="tDraft" placeholder="할 일 추가…" aria-label="새 할 일" value="' + esc(T.draft) + '" autocomplete="off" enterkeyhint="done"><button class="go" data-tadd aria-label="추가">' + ICON.plus + '</button></div>'
-      // 처음 등록할 때부터 날짜·반복 선택 (v3.20)
-      + '<div class="row qrow">' + W.map(w => '<button class="pillb' + (T.when === w[0] ? ' on' : '') + '" data-when="' + w[0] + '">' + w[1] + '</button>').join('')
+  // 화면을 세 조각(진행 막대·날짜/반복 칩·목록)으로 나눠 그림. 이미 그려져 있으면 입력칸은 건드리지 않고 조각만 바꿈
+  // → 글자를 치는 중에 새로고침·반복 맞추기가 끝나도 한글 조합(예: '하'+'ㄴ'='한')이 끊기지 않음 (v3.28)
+  const prog = '<div class="t"><span>오늘 ' + dn + ' / ' + tot + ' 완료</span><span>' + pct + '%</span></div><div class="b"><i style="width:' + pct + '%"></i></div>';
+  // 처음 등록할 때부터 날짜·반복 선택 (v3.20)
+  const chips = '<div class="row qrow">' + W.map(w => '<button class="pillb' + (T.when === w[0] ? ' on' : '') + '" data-when="' + w[0] + '">' + w[1] + '</button>').join('')
       + '<label class="pillb pick' + (T.when === 'pick' ? ' on' : '') + '">' + (T.when === 'pick' && T.pick ? esc(koD(pymd(T.pick))) : '날짜 고르기') + '<input type="date" id="tPick" aria-label="날짜 고르기" value="' + esc(T.pick || '') + '"></label></div>'
-      + '<div class="row qrow"><span class="lab qlab">반복</span>' + REP.map(q => '<button class="pillb' + (T.rep === q[0] ? ' on' : '') + '" data-trep="' + q[0] + '">' + q[1] + '</button>').join('') + '</div></div>';
+      + '<div class="row qrow"><span class="lab qlab">반복</span>' + REP.map(q => '<button class="pillb' + (T.rep === q[0] ? ' on' : '') + '" data-trep="' + q[0] + '">' + q[1] + '</button>').join('') + '</div>';
+  let h = '';
   if (late.length) h += grp('밀린 일', 'late', late, 'late', '<button class="tside" data-rollall style="margin-right:0;border-color:#8E6B3A;background:rgba(201,164,106,.1)">모두 오늘로</button>');
   h += grp('오늘 · ' + dl(today), '', tdy, 'today') + grp('다가오는 일', '', up, 'up') + grp('날짜 없음', 'mute', none, 'none');
   h += '<button class="donetoggle" data-donetog aria-expanded="' + T.showDone + '"><span style="display:inline-flex;transition:transform .2s;transform:rotate(' + (T.showDone ? 90 : 0) + 'deg)">' + ICON.chev + '</span>완료됨 ' + doneOld.length + '개</button>';
   if (T.showDone) h += '<div class="tlist" style="opacity:.85">' + (doneOld.length ? doneOld.slice(0, 50).map(x => row(x, 'done')).join('') : '<div class="note" style="padding:14px">최근 30일 동안 완료한 일이 여기 보입니다</div>') + '</div>';
-  h += '</div>';
-  const y = $('#tscroll') ? $('#tscroll').scrollTop : 0, ae = document.activeElement, foc = ae && ae.id === 'tDraft', cp = foc ? ae.selectionStart : 0;
-  main.innerHTML = h; $('#tscroll').scrollTop = y;
-  if (foc) { const d = $('#tDraft'); d.focus({ preventScroll: true }); try { d.setSelectionRange(cp, cp); } catch (e) {} }
+  const old = $('#tDraft');
+  if ($('#tscroll') && old && $('#tprog') && $('#tchips') && $('#tgroups')) {
+    $('#tprog').innerHTML = prog; $('#tchips').innerHTML = chips; $('#tgroups').innerHTML = h;
+    if (old.value !== T.draft) old.value = T.draft; // 추가 직후 비우기 등. 같으면 손대지 않음(조합 유지)
+    return;
+  }
+  main.innerHTML = '<div class="scroller" id="tscroll"><div class="prog" id="tprog">' + prog + '</div>'
+    + '<div class="qadd"><div class="r"><input id="tDraft" placeholder="할 일 추가…" aria-label="새 할 일" value="' + esc(T.draft) + '" autocomplete="off" enterkeyhint="done"><button class="go" data-tadd aria-label="추가">' + ICON.plus + '</button></div><div id="tchips" style="display:flex;flex-direction:column;gap:8px">' + chips + '</div></div>'
+    + '<div id="tgroups">' + h + '</div></div>';
 }
 const TAPI = 'https://tasks.googleapis.com/tasks/v1';
 const NFONTS = [
@@ -1314,9 +1321,6 @@ document.addEventListener('keydown', e => {
   if (typing || sheetStack.length || st.tab !== 'cal' || e.altKey || e.ctrlKey || e.metaKey) return;
   if (e.key === 'ArrowLeft') { e.preventDefault(); move(-1); } else if (e.key === 'ArrowRight') { e.preventDefault(); move(1); }
 });
-// 창 크기가 바뀌면(PC 창 크기 조절·전체 화면·가로세로 회전) 달력 칸 높이를 다시 계산. 아이폰 키보드(높이만 바뀜)는 무시
-let lastW = innerWidth, rsT = 0;
-addEventListener('resize', () => { clearTimeout(rsT); rsT = setTimeout(() => { const wide = innerWidth >= 700; if ((innerWidth !== lastW || wide) && st.tab === 'cal') { if (st.view === 'month') drawMonth(); else drawWeek(); } lastW = innerWidth; }, 150); });
 // PC·안드로이드 설치(크롬·엣지): 설치 가능하면 설정에 '이 기기에 앱 설치' 버튼
 let installEvt = null;
 addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; });
@@ -1353,6 +1357,7 @@ $('#nSet').onclick = () => openSettings();
 let tx = null, ty = null;
 $('#main').addEventListener('touchstart', e => { if (st.tab !== 'cal') return; if (e.touches.length === 1) { tx = e.touches[0].clientX; ty = e.touches[0].clientY; } }, { passive: true });
 $('#main').addEventListener('touchend', e => { if (tx == null) return; const dx = e.changedTouches[0].clientX - tx, dy = e.changedTouches[0].clientY - ty; tx = null; if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) move(dx < 0 ? 1 : -1); }, { passive: true });
+// 창 크기가 바뀌면(PC 창 크기 조절·전체 화면·회전) 화면을 다시 맞춤 — 처리는 여기 한 곳
 let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => render(), 200); });
 let hiddenAt = 0;
 document.addEventListener('visibilitychange', () => {

@@ -212,6 +212,10 @@ async def run():
           const r = await api('create', { event: { calId: cal, title: 'QA경합일정', allDay: true, start: ymd(t), end: ymd(addD(t, 1)), alarms: [] } }, true); cacheAdd([r.event]); await p;
           const n = () => fromCache(t, addD(t, 1)).filter(x => x.title === 'QA경합일정').length; const mid = n(); await new Promise(r => setTimeout(r, 2200)); const end = n(); await api('delete', { calId: cal, id: r.event.id }, true); cacheRemove(r.event); return { mid, end }; }""")
         if rc2 != {'mid': 1, 'end': 1}: iss.append(f'새로고침 중 추가한 일정이 사라지거나 겹침: {rc2}')
+        # 글자 치는 중 뒤에서 다시 그려져도 입력칸(같은 요소·글자·커서)이 그대로인지
+        ime = await pg.evaluate("""async () => { const d = document.querySelector('#tDraft'); d.focus(); d.value = '하'; d.dispatchEvent(new Event('input', { bubbles: true })); d.setSelectionRange(1, 1); drawTasks(); await loadTasks(true); drawTasks();
+          const d2 = document.querySelector('#tDraft'); const r = { same: d === d2, focus: document.activeElement === d2, val: d2.value, caret: d2.selectionStart }; d2.value = ''; d2.dispatchEvent(new Event('input', { bubbles: true })); d2.blur(); return r; }""")
+        if ime != {'same': True, 'focus': True, 'val': '하', 'caret': 1}: iss.append(f'입력 중 다시 그리기로 입력칸이 바뀜: {ime}')
         # 완료 시각(UTC) → 기기 날짜 비교: 한국 시간 아침에 끝낸 오늘 할 일이 '오늘' 목록에 남아 있어야 함
         tzr = await pg.evaluate("""() => { const t = sod(new Date()), k = ymd(t), lid = S.listId; const early = new Date(t.getTime() + 60000).toISOString(), old = new Date(t.getTime() - 2 * 864e5).toISOString();
           T.tasks.unshift({ id: 'qa1', listId: lid, title: 'QA아침완료', notes: '', due: k, done: true, completed: early, parent: '' }, { id: 'qa2', listId: lid, title: 'QA미리완료', notes: '', due: k, done: true, completed: old, parent: '' });
