@@ -269,6 +269,12 @@ async def run():
         await pg.fill('#kTitle', '기출 1회 풀기'); await pg.click('[data-a=ksave]'); await pg.wait_for_timeout(1200)
         u2 = await pg.evaluate("""() => [repOf('메모\\n↻반복=daily\\n덧붙인 글'), repStrip('메모\\n↻반복=daily\\n덧붙인 글'), repOf('↻반복=monthly:31'), repStrip('↻반복=weekly:2\\n뒤'), repSet('a', 'monthly', '2026-11-30', 31), repOf('글 중간 ↻반복=daily 은 표식 아님')]""")
         if u2 != [{'k': 'daily', 'n': None}, '메모\n덧붙인 글', {'k': 'monthly', 'n': 31}, '뒤', 'a\n↻반복=monthly:31', None]: iss.append(f'반복 표식 인식 이상: {u2}')
+        # 100개 넘는 목록: 데이터 창구가 100개에서 자른 것처럼 흉내 → 나머지를 끝까지 읽어 채우는지
+        pgq = await pg.evaluate("""async () => { const lid = S.listId; await Promise.all(Array.from({ length: 104 }, (_, i) => api('taskAdd', { listId: lid, title: 'QA대량' + i, due: '' }, true)));
+          const real = api; let cut = 0; api = async (a, p, post) => { const r = await real(a, p, post); if (a === 'tasks') { const mine = r.tasks.filter(t => t.listId === lid); cut = mine.length - 100; const keep = new Set(mine.slice(0, 100).map(t => t.id)); r.tasks = r.tasks.filter(t => t.listId !== lid || keep.has(t.id)); } return r; };
+          await new Promise(r => setTimeout(r, 300)); await loadTasks(true); api = real; const ids = T.tasks.filter(t => t.listId === lid).map(t => t.id);
+          return { cut: cut > 0, all: T.tasks.filter(t => /^QA대량/.test(t.title)).length, dup: ids.length - new Set(ids).size }; }""")
+        if pgq != {'cut': True, 'all': 104, 'dup': 0}: iss.append(f'100개 넘는 목록 채우기 이상: {pgq}')
         # 삭제하면 반복 멈춤
         await pg.click('#nCal'); await pg.wait_for_timeout(600); await pg.click('#nTask'); await pg.wait_for_timeout(800)
         await pg.click(f'.trow[data-tid] .tmain:has-text("{T0}")'); await pg.wait_for_timeout(500)

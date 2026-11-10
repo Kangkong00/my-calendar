@@ -1,6 +1,6 @@
 <script>
 'use strict';
-const APP_V = '3.25';
+const APP_V = '3.26';
 /* ========== 기본 도구 ========== */
 const $ = s => document.querySelector(s);
 const pad = n => String(n).padStart(2, '0');
@@ -87,7 +87,7 @@ const Demo = (() => {
       const u = decodeURIComponent(r.url), m = r.method;
       const ml = u.match(/\/lists\/([^/]+)\/tasks(?:\?(.*))?$/);
       if (ml) { // 목록 조회(dueMin)·새 할 일 — 반복 할 일 엔진용
-        const lid = ml[1], gt = x => ({ id: x.id, title: x.title, notes: x.notes, due: x.due ? x.due + 'T00:00:00.000Z' : undefined, status: x.done ? 'completed' : 'needsAction' });
+        const lid = ml[1], gt = x => ({ id: x.id, title: x.title, notes: x.notes, due: x.due ? x.due + 'T00:00:00.000Z' : undefined, status: x.done ? 'completed' : 'needsAction', completed: x.completed || undefined, parent: x.parent || undefined });
         if (m === 'post') { const b = r.body || {}, x = { id: 't' + seq++, listId: lid, title: b.title || '', notes: b.notes || '', due: b.due ? b.due.slice(0, 10) : '', done: false, completed: '', parent: '' }; tasks.unshift(x); return { code: 200, body: gt(x) }; }
         const dm = (new URLSearchParams(ml[2] || '').get('dueMin') || '').slice(0, 10);
         return { code: 200, body: { items: tasks.filter(x => x.listId === lid && (!dm || (x.due && x.due >= dm))).map(gt) } };
@@ -699,10 +699,29 @@ async function loadTasks(force) {
     T.ts = 0; clearTimeout(T.retry); T.retry = setTimeout(() => loadTasks(true).then(ch => { if (ch) drawTasks(); }).catch(() => {}), 1200);
     return false;
   }
+  try { await fillTaskPages(r); } catch (e) { console.warn('할 일 나머지 쪽 읽기 실패', e); }
   T.lists = r.lists; T.tasks = r.tasks; T.ts = Date.now(); saveTasks();
   if (!S.listId || !T.lists.find(l => l.id === S.listId)) { S.listId = (T.lists[0] || {}).id || ''; save(); }
   setTimeout(repSync, 0);
   return JSON.stringify(T.tasks) !== before;
+}
+// 데이터 창구는 목록마다 한 번에 100개까지만 읽음(안 끝낸 일 100개 + 최근 30일 끝낸 일 100개).
+// 한 목록에서 100개 이상 왔으면 잘렸을 수 있으므로, 그 목록만 중계(batch)로 끝까지 다시 읽어 채움 (v3.26).
+// 잘린 채 두면: 끝낸 반복 회차가 안 보여 반복이 멈추거나, 열린 회차가 안 보여 같은 할 일이 또 만들어질 수 있음.
+async function fillTaskPages(r) {
+  const cnt = {}; r.tasks.forEach(t => { cnt[t.listId] = (cnt[t.listId] || 0) + 1; });
+  const big = (r.lists || []).filter(l => (cnt[l.id] || 0) >= 100); if (!big.length) return;
+  const since = encodeURIComponent(new Date(Date.now() - 30 * 864e5).toISOString());
+  let jobs = []; big.forEach(l => { jobs.push({ l: l.id, q: '?showCompleted=true&showHidden=true&maxResults=100&completedMin=' + since, pt: '' }, { l: l.id, q: '?showCompleted=false&maxResults=100', pt: '' }); });
+  const got = {}; big.forEach(l => { got[l.id] = {}; });
+  for (let round = 0; jobs.length && round < 20; round++) {
+    const res = await batch(jobs.map(j => ({ method: 'get', url: taskUrl(j.l) + j.q + (j.pt ? '&pageToken=' + encodeURIComponent(j.pt) : '') })));
+    const next = [];
+    res.forEach((x, i) => { const b = x.body || {}; (b.items || []).forEach(t => { if (!t.deleted) got[jobs[i].l][t.id] = mapGTask(t, jobs[i].l); }); if (b.nextPageToken) next.push(Object.assign({}, jobs[i], { pt: b.nextPageToken })); });
+    jobs = next;
+  }
+  const bigIds = {}; big.forEach(l => { bigIds[l.id] = 1; });
+  r.tasks = r.tasks.filter(t => !bigIds[t.listId]).concat(...big.map(l => Object.values(got[l.id])));
 }
 function renderTasks() {
   loadFont(S.noteFont || 'pen');
