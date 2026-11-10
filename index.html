@@ -446,7 +446,7 @@ input[type=date].inp{color-scheme:dark;min-width:0}
 </div>
 <script>
 'use strict';
-const APP_V = '3.23';
+const APP_V = '3.24';
 /* ========== 기본 도구 ========== */
 const $ = s => document.querySelector(s);
 const pad = n => String(n).padStart(2, '0');
@@ -840,12 +840,13 @@ async function openDay(d) {
      다 끝냈으면 그 날짜 몫을 새로 만듦(매일은 다음 날 열 때, 매주는 끝낸 뒤 바로 다음 주 몫이 '다가오는 일'에). 만들기 전에 구글에 직접 다시 물어 중복 생성을 막음.
    - 앱을 열어야 그날 몫이 생김. 반복을 멈추려면 '반복: 안 함' 또는 삭제(남은 최신 회차의 표식도 지움). */
 const REP = [['', '안 함'], ['daily', '매일'], ['weekday', '평일'], ['weekly', '매주'], ['monthly', '매월']];
-const REP_RE = /\n?↻반복=(daily|weekday|weekly|monthly)(?::(\d+))?[ \t]*$/;
-const repStrip = t => String(t || '').replace(REP_RE, '');
-const repOf = t => { const m = String(t || '').match(REP_RE); return m ? { k: m[1], n: m[2] != null ? Number(m[2]) : null } : null; };
-function repSet(notes, k, due) {
+// 표식 줄은 보통 메모 맨 끝이지만, 구글 Tasks 앱에서 그 뒤에 글을 덧붙여도 인식하도록 '한 줄 전체가 표식'이면 어디든 허용 (v3.24)
+const REP_RE = /(^|\n)↻반복=(daily|weekday|weekly|monthly)(?::(\d+))?[ \t]*(?=\n|$)/;
+const repStrip = t => String(t || '').replace(REP_RE, '').replace(/^\n/, '');
+const repOf = t => { const m = String(t || '').match(REP_RE); return m ? { k: m[2], n: m[3] != null ? Number(m[3]) : null } : null; };
+function repSet(notes, k, due, keepN) {
   const b = repStrip(notes); if (!k) return b;
-  const d = due ? pymd(due) : sod(new Date()), n = k === 'weekly' ? d.getDay() : k === 'monthly' ? d.getDate() : null;
+  const d = due ? pymd(due) : sod(new Date()), n = k === 'weekly' ? (keepN != null ? keepN : d.getDay()) : k === 'monthly' ? (keepN != null ? keepN : d.getDate()) : null;
   return (b ? b + '\n' : '') + '↻반복=' + k + (n != null ? ':' + n : '');
 }
 const repLabel = r => !r ? '' : r.k === 'daily' ? '매일' : r.k === 'weekday' ? '평일' : r.k === 'weekly' ? '매주 ' + WD[r.n || 0] + '요일' : '매월 ' + (r.n || 1) + '일';
@@ -908,13 +909,11 @@ async function repSync() {
   } catch (e) { console.warn('반복 할 일 맞추기 실패', e); }
   finally { repBusy = false; }
 }
-// 반복 할 일 삭제 = 반복 멈춤: 같은 묶음에서 남는 최신 회차에 표식이 있으면 지우는 요청
-function repStopReq(x) {
-  if (!repOf(x.notes)) return null;
-  const rest = (T.tasks || []).filter(y => y.id !== x.id && !y.parent && repKey(y) === repKey(x)), h = rest.length && repHead(rest);
-  if (!h || !repOf(h.notes)) return null;
-  const notes = repStrip(h.notes);
-  return { req: { method: 'patch', url: taskUrl(h.listId, h.id), body: { notes } }, apply() { h.notes = notes; } };
+// 반복 멈춤(삭제·반복 끔·이름 변경): 같은 묶음(목록+옛 제목)의 '다른' 회차에 남은 표식을 모두 지우는 요청.
+// 하나라도 남으면 끝낸 옛 회차가 '머리'가 되어 다음 날 옛 이름의 할 일이 다시 생겨남 (v3.24에서 수정한 버그)
+function repStopReqs(x, key) {
+  const k = key || repKey(x), rest = (T.tasks || []).filter(y => y.id !== x.id && !y.parent && !String(y.id).startsWith('tmp') && repKey(y) === k && repOf(y.notes));
+  return { reqs: rest.map(h => ({ method: 'patch', url: taskUrl(h.listId, h.id), body: { notes: repStrip(h.notes) } })), apply() { rest.forEach(h => { h.notes = repStrip(h.notes); }); } };
 }
 
 /* ========== 캘린더 ↔ 할 일 연결 (v3.17) ==========
@@ -1269,14 +1268,17 @@ function openTask(x) {
     if (a === 'kdel') {
       if (!f.armed) { f.armed = true; t.textContent = '한 번 더 누르면 삭제'; t.style.borderColor = '#E8957A'; t.style.color = '#E8957A'; return; }
       t.disabled = true;
-      try { const stop = repStopReq(x); await batch([{ method: 'delete', url }].concat(stop ? [stop.req] : [])); if (stop) stop.apply(); T.tasks = T.tasks.filter(y => y.id !== x.id && y.parent !== x.id); saveTasks(); toast(stop ? '삭제했습니다 · 반복도 멈췄어요' : '삭제했습니다'); closeSheet(); drawTasks(); } catch (err) { toast('삭제 실패: ' + err.message); t.disabled = false; }
+      try { const wasRep = !!repOf(x.notes), stop = repStopReqs(x); await batch([{ method: 'delete', url }].concat(stop.reqs)); stop.apply(); T.tasks = T.tasks.filter(y => y.id !== x.id && y.parent !== x.id); saveTasks(); toast(wasRep ? '삭제했습니다 · 반복도 멈췄어요' : '삭제했습니다'); closeSheet(); drawTasks(); } catch (err) { toast('삭제 실패: ' + err.message); t.disabled = false; }
       return;
     }
     if (a === 'ksave') {
       const title = (sh.querySelector('#kTitle').value || '').trim(); if (!title) { toast('내용을 입력해 주세요'); return; }
-      const notes = repSet(htmlToNote(sh.querySelector('#kNotes')), f.rep, f.due);
+      // 반복 종류와 날짜를 그대로 둔 저장이면 요일·날짜 기준(n)을 유지 (예: 매월 31일 반복이 30일로 옮겨진 달에 저장해도 31일 유지)
+      const notes = repSet(htmlToNote(sh.querySelector('#kNotes')), f.rep, f.due, r0 && r0.k === f.rep && f.due === (x.due || '') ? r0.n : null);
+      // 반복하던 할 일의 이름을 바꾸거나 반복을 끄면, 옛 묶음의 다른 회차 표식도 함께 지움
+      const stop = r0 && (!f.rep || title !== String(x.title || '').trim()) ? repStopReqs(x) : { reqs: [], apply() {} };
       t.disabled = true; t.textContent = '저장 중';
-      try { await batch([{ method: 'patch', url, body: { title, notes, due: f.due ? f.due + 'T00:00:00.000Z' : null } }]); Object.assign(x, { title, notes, due: f.due }); saveTasks(); toast(f.rep ? '저장했습니다 · ' + repLabel(repOf(notes)) + ' 반복' : '저장했습니다'); closeSheet(); drawTasks(); repSync(); }
+      try { await batch([{ method: 'patch', url, body: { title, notes, due: f.due ? f.due + 'T00:00:00.000Z' : null } }].concat(stop.reqs)); stop.apply(); Object.assign(x, { title, notes, due: f.due }); saveTasks(); toast(f.rep ? '저장했습니다 · ' + repLabel(repOf(notes)) + ' 반복' : '저장했습니다'); closeSheet(); drawTasks(); repSync(); }
       catch (err) { toast('저장 실패: ' + err.message); t.disabled = false; t.textContent = '저장'; }
     }
   }, { keep: true, height: '94%', onChange: e => { if (e.target.id === 'kDue') setDue(e.target.value); } });
