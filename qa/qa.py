@@ -149,6 +149,9 @@ async def run():
         await pg.goto(URL); await pg.wait_for_timeout(1500)
         rt = await pg.evaluate("() => { const o = { url: S.url, key: S.key, aiKey: S.aiKey }; S.url = 'https://script.google.com/macros/s/한글ABC/exec'; S.key = 'k3y-가나'; S.aiKey = 'AIza-x'; const c = codeMake(); const r = codeRead(c); Object.assign(S, o); return [r, codeRead('아무 글자'), codeRead('MYCAL1:깨진')]; }")
         if rt != [{'url': 'https://script.google.com/macros/s/한글ABC/exec', 'key': 'k3y-가나', 'ai': 'AIza-x'}, None, None]: errs.append(f'연결 코드 왕복 이상: {rt}')
+        wp = await pg.evaluate("""() => { localStorage.setItem('cal.c.tasks', '{"x":1}'); localStorage.setItem('cal.c.months', '{}'); localStorage.setItem('cal.ai', '{}'); localStorage.setItem('cal.c.demo.tasks', '{"d":1}'); localStorage.setItem('cal.settings', localStorage.getItem('cal.settings') || '{}');
+          wipeAccountCache(); return [localStorage.getItem('cal.c.tasks'), localStorage.getItem('cal.c.months'), localStorage.getItem('cal.ai'), !!localStorage.getItem('cal.c.demo.tasks'), !!localStorage.getItem('cal.settings')]; }""")
+        if wp != [None, None, None, True, True]: errs.append(f'연결 해제 시 데이터 지우기 이상: {wp}')
         report['연결 코드'] = errs
         await ctx.close()
         # 캘린더↔할 일 연결 + 시작 화면 기능 검사 (390x844)

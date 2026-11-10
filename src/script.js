@@ -1,6 +1,6 @@
 <script>
 'use strict';
-const APP_V = '3.26';
+const APP_V = '3.27';
 /* ========== 기본 도구 ========== */
 const $ = s => document.querySelector(s);
 const pad = n => String(n).padStart(2, '0');
@@ -1057,6 +1057,12 @@ async function gemini(prompt, maxTok) {
   throw new Error(last || '연결 실패');
 }
 
+/* --- 이 기기에 저장된 계정 데이터 사본 지우기 (연결 해제·다른 계정으로 바꿀 때). 예시 데이터(cal.c.demo.*)와 화면 설정은 남김 --- */
+function wipeAccountCache() {
+  try { Object.keys(localStorage).filter(k => (k.indexOf('cal.c.') === 0 && k.indexOf('cal.c.demo.') !== 0) || k === 'cal.ai').forEach(k => localStorage.removeItem(k)); } catch (e) {}
+  AI.store = null; AI.q = [];
+}
+
 /* --- 다른 기기로 연결 옮기기: 'MYCAL1:' + base64(JSON {url,key,ai}) --- */
 const codeMake = () => 'MYCAL1:' + btoa(unescape(encodeURIComponent(JSON.stringify({ url: S.url, key: S.key, ai: S.aiKey || '' }))));
 function codeRead(t) { if (!/^MYCAL1:/.test(t || '')) return null; try { const o = JSON.parse(decodeURIComponent(escape(atob(t.slice(7).trim())))); return o && o.url && o.key ? o : null; } catch (e) { return null; } }
@@ -1238,14 +1244,18 @@ function openSettings() {
     if (a === 'refresh') { try { const r = await api('calendars', { fresh: '1' }); setCals(r.calendars); M.months = {}; M.ts = {}; toast('새로 불러왔습니다'); redraw(); render(); } catch (err) { toast(err.message); } }
     if (a === 'copycode') { copyText(codeMake()).then(ok => toast(ok ? '연결 코드를 복사했어요. PC 앱 설정의 주소 칸에 붙여 넣으세요' : '복사하지 못했어요')); return; }
     if (a === 'install') { if (installEvt) { installEvt.prompt(); installEvt.userChoice.finally(() => { installEvt = null; redraw(); }); } return; }
-    if (a === 'unlink') { S.url = ''; S.key = ''; save(); reset(); await boot(); redraw(); toast('예시 데이터로 돌아왔습니다'); }
+    if (a === 'unlink' && !t.dataset.armed) { t.dataset.armed = '1'; t.textContent = '한 번 더 누르면 해제·삭제'; t.style.borderColor = '#E8957A'; t.style.color = '#E8957A'; return; }
+    if (a === 'unlink') { // 연결 해제 = 이 기기에 남은 내 일정·할 일·계획 사본과 AI 키·AI 문장도 함께 지움 (회사 PC 등 남의 눈에 닿는 기기 대비, v3.27)
+      wipeAccountCache(); S.url = ''; S.key = ''; S.aiKey = ''; S.aiModel = ''; S.listId = ''; S.sv = 0; save(); reset(); await boot(); redraw(); toast('연결을 끊고 이 기기에 저장된 내 데이터를 지웠습니다');
+    }
     if (a === 'test') {
       let url = sh.querySelector('#sUrl').value.trim(), key = sh.querySelector('#sKey').value.trim();
       const code = codeRead(url); if (code) { url = code.url; key = code.key; if (code.ai && !S.aiKey) S.aiKey = code.ai; }
       if (!url || !key) { toast('주소와 키를 모두 넣어 주세요'); return; }
       const old = { url: S.url, key: S.key }; S.url = url; S.key = key;
+      const switched = !!old.url && old.url !== url; // 다른 계정(주소)으로 바꾸는 경우
       t.disabled = true; t.textContent = '확인 중';
-      try { const r = await api('ping'); if ((r.v || 1) < 3) toast('데이터 창구가 옛 버전입니다. 앱스 스크립트를 업데이트해 주세요'); save(); reset(); await boot(); toast('연결되었습니다'); redraw(); }
+      try { const r = await api('ping'); if ((r.v || 1) < 3) toast('데이터 창구가 옛 버전입니다. 앱스 스크립트를 업데이트해 주세요'); if (switched) { wipeAccountCache(); S.listId = ''; } save(); reset(); await boot(); toast('연결되었습니다'); redraw(); }
       catch (err) { S.url = old.url; S.key = old.key; toast('연결 실패: ' + err.message); t.disabled = false; t.textContent = '저장하고 연결 확인'; }
     }
   });
