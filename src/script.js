@@ -1,6 +1,6 @@
 <script>
 'use strict';
-const APP_V = '3.28';
+const APP_V = '3.29';
 /* ========== 기본 도구 ========== */
 const $ = s => document.querySelector(s);
 const pad = n => String(n).padStart(2, '0');
@@ -89,8 +89,8 @@ const Demo = (() => {
       if (ml) { // 목록 조회(dueMin)·새 할 일 — 반복 할 일 엔진용
         const lid = ml[1], gt = x => ({ id: x.id, title: x.title, notes: x.notes, due: x.due ? x.due + 'T00:00:00.000Z' : undefined, status: x.done ? 'completed' : 'needsAction', completed: x.completed || undefined, parent: x.parent || undefined });
         if (m === 'post') { const b = r.body || {}, x = { id: 't' + seq++, listId: lid, title: b.title || '', notes: b.notes || '', due: b.due ? b.due.slice(0, 10) : '', done: false, completed: '', parent: '' }; tasks.unshift(x); return { code: 200, body: gt(x) }; }
-        const dm = (new URLSearchParams(ml[2] || '').get('dueMin') || '').slice(0, 10);
-        return { code: 200, body: { items: tasks.filter(x => x.listId === lid && (!dm || (x.due && x.due >= dm))).map(gt) } };
+        const qp = new URLSearchParams(ml[2] || ''), dm = (qp.get('dueMin') || '').slice(0, 10), dx = (qp.get('dueMax') || '').slice(0, 10);
+        return { code: 200, body: { items: tasks.filter(x => x.listId === lid && (!dm || (x.due && x.due >= dm)) && (!dx || (x.due && x.due <= dx))).map(gt) } };
       }
       let mt = u.match(/\/lists\/([^/]+)\/tasks\/([^/?]+)/);
       if (mt) { const x = tasks.find(y => y.id === mt[2]); if (!x) return { code: 404, body: null }; if (m === 'delete') { tasks = tasks.filter(y => y.id !== x.id && y.parent !== x.id); return { code: 204, body: null }; } const b = r.body || {}; if (b.title != null) x.title = b.title; if (b.notes !== undefined) x.notes = b.notes || ''; if (b.due !== undefined) x.due = b.due ? b.due.slice(0, 10) : ''; return { code: 200, body: { id: x.id, title: x.title, notes: x.notes, due: x.due ? x.due + 'T00:00:00.000Z' : undefined, status: x.done ? 'completed' : 'needsAction' } }; }
@@ -226,7 +226,7 @@ async function renderMonth(dir) {
   if (!hasAll(start, end)) { try { await ensure(start, end); } catch (err) { toast('불러오기 실패: ' + err.message); } if (st.tab === 'cal' && st.view === 'month') drawMonth(); }
   else refreshStale(start, end, 60000, () => { if (st.tab === 'cal' && st.view === 'month') drawMonth(); });
   const c = st.cur; prefetch(new Date(c.getFullYear(), c.getMonth() - 1, 1), new Date(c.getFullYear(), c.getMonth() + 2, 1));
-  syncCalTasks();
+  syncCalTasks(); loadTaskHist(start, end);
 }
 function prefetch(s, e) { const miss = monthsOf(s, e).filter(k => !M.months[k]); if (miss.length) fetchMonths(miss).catch(() => {}); }
 function drawMonth(dir) {
@@ -239,7 +239,7 @@ function drawMonth(dir) {
   const rowH = (wrap.clientHeight || 600) / nW, CH = 17, GAP = 2, TOP = 26;
   const maxL = Math.max(1, Math.floor((rowH - TOP - 16) / (CH + GAP)));
   const vis = list.filter(x => !S.hiddenMonth.includes(x.calId));
-  const due = dueCount(), tk = ymd(today), lateN = lateCount();
+  const mk = calMarks();
   let html = '';
   for (let w = 0; w < nW; w++) {
     const a = addD(start, w * 7), b = addD(a, 7);
@@ -258,10 +258,10 @@ function drawMonth(dir) {
       const used = lanes.reduce((m, l, k) => l && l[i] ? k + 1 : m, 0);
       const timed = vis.filter(x => !x.bar && same(x.s, d)).sort((p, q) => p.s - q.s);
       const extra = Math.max(0, timed.length - 8) + more[i];
-      const hol = list.some(x => isHol(x.calId) && x.s <= d && x.e > d), td = due[ymd(d)] || 0;
+      const hol = list.some(x => isHol(x.calId) && x.s <= d && x.e > d), td = markHTML(mk, ymd(d));
       days += '<button class="mday' + (same(d, today) ? ' today' : '') + (out ? ' out' : '') + (i === 0 ? ' sun' : '') + (i === 6 ? ' sat' : '') + (hol ? ' hol' : '') + '" data-day="' + ymd(d) + '" aria-label="' + koD(d) + '"><span class="mnum">' + d.getDate() + '</span>'
         + '<span class="pills" style="top:' + (TOP + used * (CH + GAP) + 3) + 'px">' + timed.slice(0, 8).map(x => '<i class="pill" style="background:linear-gradient(180deg,' + x.color + ',' + x.color + 'C8)"></i>').join('') + '</span>'
-        + (extra ? '<span class="more">+' + extra + '</span>' : '') + ((td || (lateN && same(d, today))) ? '<span class="tdues">' + (td ? tdueHTML(td, ymd(d) < tk) : '') + (lateN && same(d, today) ? lateHTML(lateN) : '') + '</span>' : '') + '</button>';
+        + (extra ? '<span class="more">+' + extra + '</span>' : '') + (td ? '<span class="tdues">' + td + '</span>' : '') + '</button>';
     }
     html += '<div class="mweek"><div class="mdays">' + days + '</div>' + chips + '</div>';
   }
@@ -284,14 +284,14 @@ async function renderWeek(dir) {
   if (!hasAll(a, b)) { try { await ensure(a, b); } catch (err) { toast('불러오기 실패: ' + err.message); } if (st.tab === 'cal' && st.view === 'week') drawWeek(); }
   else refreshStale(a, b, 60000, () => { if (st.tab === 'cal' && st.view === 'week') drawWeek(); });
   prefetch(addD(a, -7), addD(b, 14));
-  syncCalTasks();
+  syncCalTasks(); loadTaskHist(a, b);
 }
 function drawWeek(dir) {
   const a = addD(st.cur, -st.cur.getDay()), b = addD(a, 7), today = sod(new Date());
   const main = $('#main'), list = fromCache(a, b).filter(shown);
-  const due = dueCount(), lateN = lateCount();
+  const mk = calMarks();
   let head = '<div class="wkhead"><span></span>';
-  for (let i = 0; i < 7; i++) { const d = addD(a, i); const k = ymd(d), n = due[k] || 0; head += '<button class="wkh' + (same(d, today) ? ' today' : '') + (i === 0 ? ' sun' : '') + (i === 6 ? ' sat' : '') + '" data-day="' + k + '"' + (n ? ' aria-label="' + koD(d) + ' · 할 일 ' + n + '개"' : '') + '><span>' + WD[i] + '</span><b>' + d.getDate() + '</b>' + (n ? tdueHTML(n, k < ymd(today)) : '') + (same(d, today) && lateN ? lateHTML(lateN) : '') + '</button>'; }
+  for (let i = 0; i < 7; i++) { const d = addD(a, i); const k = ymd(d), mh = markHTML(mk, k); head += '<button class="wkh' + (same(d, today) ? ' today' : '') + (i === 0 ? ' sun' : '') + (i === 6 ? ' sat' : '') + '" data-day="' + k + '"' + (mh ? ' aria-label="' + koD(d) + ' · ' + markLabel(mk, k) + '"' : '') + '><span>' + WD[i] + '</span><b>' + d.getDate() + '</b>' + mh + '</button>'; }
   head += '</div>';
   const lanes = []; let adHtml = '';
   list.filter(x => x.bar).sort((p, q) => (q.e - q.s) - (p.e - p.s)).forEach(x => {
@@ -482,20 +482,76 @@ function repStopReqs(x, key) {
    마감일이 있는 할 일(구글 Tasks)을 월간 칸·주간 머리·하루 시트에 보여 줌. 모든 목록 대상, 끝낸 것은 숨김.
    지난 날짜에 남은 할 일은 붉은색(밀린 일). 할 일이 바뀌면 drawTasks()가 캘린더 탭에서는 tasksChangedOnCal()로 넘김. */
 const dueOpen = () => (T.tasks || []).filter(x => x.due && !x.done);
-function dueCount() { const m = {}; dueOpen().forEach(x => { m[x.due] = (m[x.due] || 0) + 1; }); return m; }
 const tdueHTML = (n, late) => '<span class="tdue' + (late ? ' late' : '') + '" aria-hidden="true"><svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="1" y="1" width="10" height="10" rx="2.5"/><path d="M3.6 6.2l1.7 1.7 3.2-3.6"/></svg>' + n + '</span>';
 // 밀린 일 = 마감이 오늘 이전인데 아직 안 끝낸 할 일. 오늘 칸(월간)·오늘 날짜(주간)에 붉은 숫자로 모아 보여 줌
-const lateCount = () => { const t = ymd(sod(new Date())); return dueOpen().filter(x => x.due < t).length; };
 const lateHTML = n => '<span class="tdue latesum" aria-label="밀린 할 일 ' + n + '개">' + n + '</span>';
 function dayTasksHTML(k) {
   const today = ymd(sod(new Date())), late = k < today;
   const xs = (T.tasks || []).filter(x => x.due === k).sort((a, b) => (a.done - b.done) || String(a.title).localeCompare(String(b.title)));
   const lt = k === today ? dueOpen().filter(x => x.due < today).sort((a, b) => a.due < b.due ? -1 : 1) : [];
   const row = (x, isLate, sub) => '<div class="trow dt' + (x.done ? ' done' : '') + (isLate && !x.done ? ' late' : '') + '" data-tid="' + esc(x.id) + '">' + ckHTML(x.title + ' 완료', 'data-tk="' + esc(x.id) + '"' + (x.done ? ' checked' : '')) + '<button class="tmain" data-a="task" data-id="' + esc(x.id) + '"><span class="ttl">' + esc(x.title) + '<i class="strike"></i></span>' + (sub || repOf(x.notes) ? '<span class="tmeta">' + (repOf(x.notes) ? repBadge(x, repOf(x.notes)) + (sub ? ' · ' : '') : '') + (sub || '') + '</span>' : '') + '</button></div>';
-  let h = '';
-  if (xs.length) h += '<div class="dthead"><span>할 일</span><em>' + xs.filter(x => !x.done).length + '개 남음' + (late && xs.some(x => !x.done) ? ' · 밀린 일' : '') + '</em></div>' + xs.map(x => row(x, late)).join('');
+  let h = ''; const mk = calMarks(), nd = xs.filter(x => x.done).length, missed = mk.missNames[k] || [];
+  if (xs.length) h += '<div class="dthead"><span>할 일</span><em>' + xs.filter(x => !x.done).length + '개 남음' + (nd ? ' · <b class="okt">완료 ' + nd + '</b>' : '') + (late && xs.some(x => !x.done) ? ' · 밀린 일' : '') + '</em></div>' + xs.map(x => row(x, late)).join('');
+  if (missed.length) h += '<div class="dthead late"><span>못 한 반복</span><em>' + missed.map(esc).join(', ') + '</em></div>';
   if (lt.length) h += '<div class="dthead late"><span>밀린 일</span><em>' + lt.length + '개 · 체크하면 완료, 눌러서 날짜 바꾸기</em></div>' + lt.map(x => row(x, true, koD(pymd(x.due)) + ' 까지였음')).join('');
   return h;
+}
+/* --- 달력의 할 일 표시 (v3.29): 모두 선(테두리)만, 채우기 없음 ---
+   청록 ✓N = 그날 마감이던 할 일 중 끝낸 것 / 금색 ☑N = 오늘·앞으로 남은 것 / 빨강 ☑N = 지난 날짜에 못 한 것(밀린 일 + 못 한 반복)
+   빨강 숫자(오늘 칸·오늘 날짜) = 지금 남아 있는 밀린 일 합계
+   못 한 반복: 반복은 안 한 회차를 다음 날로 옮겨서 기록이 안 남으므로, '첫 회차 날짜 ~ 어제' 중 반복해야 했는데 끝낸 기록이 없는 날을 계산(구글엔 아무것도 안 만듦)
+   완료 기록은 데이터 창구가 최근 30일치만 주므로, 그보다 오래된 달은 loadTaskHist가 그 달 것을 따로 받아 옴. 기록을 못 받은 날은 '못 함'으로 치지 않음 */
+const HIST = {}; // 달(YYYY-MM) → 그 달 마감이던 할 일 (목록 전체), 이 기기 메모리에만
+const histFrom = () => ymd(addD(sod(new Date()), -28)); // 이 날 이후는 평소 불러온 할 일로 충분
+function knownTasks() { const m = new Map(); Object.values(HIST).forEach(a => a.forEach(t => m.set(t.id, t))); (T.tasks || []).forEach(t => m.set(t.id, t)); return [...m.values()]; }
+let calMarkCache = null;
+function calMarks() {
+  const today = ymd(sod(new Date())), sig = today + '|' + (T.tasks || []).length + '|' + Object.keys(HIST).join(',') + '|' + JSON.stringify((T.tasks || []).map(t => [t.id, t.done, t.due, t.notes.length]));
+  if (calMarkCache && calMarkCache.sig === sig) return calMarkCache;
+  const all = knownTasks(), open = {}, done = {}, miss = {}, missNames = {}, hf = histFrom();
+  all.forEach(x => { if (!x.due) return; const b = x.done ? done : open; b[x.due] = (b[x.due] || 0) + 1; });
+  const covered = k => k >= hf || !!HIST[k.slice(0, 7)];
+  const groups = {}; all.filter(x => !x.parent && !String(x.id).startsWith('tmp')).forEach(x => { const g = repKey(x); (groups[g] = groups[g] || []).push(x); });
+  const cur = {}; (T.tasks || []).forEach(x => { cur[repKey(x)] = 1; });
+  Object.entries(groups).forEach(([g, xs]) => {
+    if (!cur[g]) return; // 지금 목록에 없는 묶음(지운 반복)은 계산 안 함
+    const h = repHead(xs.filter(x => (T.tasks || []).includes(x)).length ? xs.filter(x => (T.tasks || []).includes(x)) : xs), r = h && repOf(h.notes); if (!r) return;
+    const dues = xs.map(x => x.due).filter(Boolean).sort(); if (!dues.length) return;
+    const has = new Set(xs.filter(x => x.done || x.due >= today).map(x => x.due)), openOn = new Set(xs.filter(x => !x.done).map(x => x.due));
+    for (let d = pymd(dues[0]), guard = 0; ymd(d) < today && guard < 800; d = addD(d, 1), guard++) {
+      const k = ymd(d); if (!repHits(r, d) || has.has(k) || openOn.has(k) || !covered(k)) continue;
+      miss[k] = (miss[k] || 0) + 1; (missNames[k] = missNames[k] || []).push(h.title);
+    }
+  });
+  const late = dueOpen().filter(x => x.due < today).length;
+  return (calMarkCache = { sig, today, open, done, miss, missNames, late });
+}
+const okHTML = n => '<span class="tdue ok" aria-hidden="true"><svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.4l2.3 2.3L9.6 3.6"/></svg>' + n + '</span>';
+function markHTML(m, k) {
+  const ok = m.done[k] || 0, o = m.open[k] || 0, mi = m.miss[k] || 0, past = k < m.today;
+  return (ok ? okHTML(ok) : '') + (past ? (o + mi ? tdueHTML(o + mi, true) : '') : (o ? tdueHTML(o, false) : '')) + (k === m.today && m.late ? lateHTML(m.late) : '');
+}
+const markLabel = (m, k) => [m.done[k] ? '완료 ' + m.done[k] + '개' : '', (k < m.today ? (m.open[k] || 0) + (m.miss[k] || 0) : 0) ? '못 한 일 ' + ((m.open[k] || 0) + (m.miss[k] || 0)) + '개' : '', k >= m.today && m.open[k] ? '할 일 ' + m.open[k] + '개' : '', k === m.today && m.late ? '밀린 일 ' + m.late + '개' : ''].filter(Boolean).join(' · ');
+const histBusy = {};
+async function loadTaskHist(s, e) {
+  if (!T.lists || !T.lists.length) return;
+  const hf = histFrom(), ks = monthsOf(s, e).filter(k => k + '-01' < hf && !HIST[k] && !histBusy[k]); if (!ks.length) return;
+  ks.forEach(k => { histBusy[k] = 1; });
+  try {
+    for (const k of ks) {
+      const a = monthStart(k), b = new Date(a.getFullYear(), a.getMonth() + 1, 1), lo = ymd(a) + 'T00:00:00.000Z', hi = ymd(b) + 'T00:00:00.000Z';
+      let jobs = T.lists.map(l => ({ l: l.id, pt: '' })), out = [];
+      for (let round = 0; jobs.length && round < 10; round++) {
+        const res = await batch(jobs.map(j => ({ method: 'get', url: taskUrl(j.l) + '?showCompleted=true&showHidden=true&maxResults=100&dueMin=' + encodeURIComponent(lo) + '&dueMax=' + encodeURIComponent(hi) + (j.pt ? '&pageToken=' + encodeURIComponent(j.pt) : '') })));
+        const next = [];
+        res.forEach((x, i) => { const bd = x.body || {}; (bd.items || []).forEach(t => { if (!t.deleted) { const m = mapGTask(t, jobs[i].l); if (m.due && m.due.slice(0, 7) === k) out.push(m); } }); if (bd.nextPageToken) next.push({ l: jobs[i].l, pt: bd.nextPageToken }); });
+        jobs = next;
+      }
+      HIST[k] = out;
+    }
+    tasksChangedOnCal();
+  } catch (err) { console.warn('지난 달 할 일 기록 읽기 실패', err); }
+  finally { ks.forEach(k => { delete histBusy[k]; }); }
 }
 function tasksChangedOnCal() {
   document.querySelectorAll('[data-daytasks]').forEach(el => { el.innerHTML = dayTasksHTML(el.dataset.daytasks); });

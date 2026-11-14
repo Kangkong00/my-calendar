@@ -163,7 +163,7 @@ async def run():
         await pg.wait_for_selector('#cover', state='detached', timeout=5000); await pg.wait_for_timeout(1200)
         if not await pg.evaluate("() => !!document.querySelector('#mwrap') && document.querySelector('#nCal').classList.contains('on')"): iss.append('시작 화면이 캘린더 월간이 아님')
         exp = await pg.evaluate("() => { const m = {}; T.tasks.filter(x => x.due && !x.done).forEach(x => m[x.due] = (m[x.due] || 0) + 1); return m; }")
-        got = await pg.evaluate("() => Object.fromEntries([...document.querySelectorAll('.mday')].filter(d => d.querySelector('.tdue')).map(d => [d.dataset.day, +d.querySelector('.tdue').innerText]))")
+        got = await pg.evaluate("() => Object.fromEntries([...document.querySelectorAll('.mday')].filter(d => d.querySelector('.tdue:not(.ok):not(.latesum)')).map(d => [d.dataset.day, +d.querySelector('.tdue:not(.ok):not(.latesum)').innerText]))")
         vis = {k: v for k, v in exp.items() if k in await pg.evaluate("() => [...document.querySelectorAll('.mday')].map(d => d.dataset.day)")}
         if not vis: iss.append('예시 데이터에 이번 달 마감 할 일이 없음(검사 불가)')
         if got != vis: iss.append(f'월간 할 일 표시 불일치: 기대 {vis} / 화면 {got}')
@@ -188,7 +188,7 @@ async def run():
             await pg.screenshot(path=f'{OUT}/연결_하루시트.png')
             await pg.click('.sheet .daytasks label.ck >> nth=0'); await pg.wait_for_timeout(1800)
             n1 = await pg.evaluate("() => document.querySelectorAll('.sheet .daytasks .trow:not(.done)').length")
-            badge = await pg.evaluate(f"() => {{ const e = document.querySelector('.mday[data-day=\"{day}\"] .tdue'); return e ? +e.innerText : 0; }}")
+            badge = await pg.evaluate(f"() => {{ const e = document.querySelector('.mday[data-day=\"{day}\"] .tdue:not(.ok):not(.latesum)'); return e ? +e.innerText : 0; }}")
             if n1 != n0 - 1 or badge != vis[day] - 1: iss.append(f'완료 체크 후 반영 안 됨: 시트 {n0}→{n1}, 월간 {vis[day]}→{badge}')
             await pg.click('.sheet .daytasks [data-a=task] >> nth=0'); await pg.wait_for_timeout(600)
             if not await pg.evaluate("() => !!document.querySelector('#kNotes')"): iss.append('하루 시트에서 할 일 눌러도 메모가 안 열림')
@@ -204,6 +204,25 @@ async def run():
         await pg.route('**/version.json*', lambda r: r.fulfill(status=404, body=''))
         await pg.goto(URL); await pg.evaluate('localStorage.clear()'); await pg.reload(); await pg.wait_for_selector('#cover', state='detached', timeout=5000)
         await pg.click('#nTask'); await pg.wait_for_timeout(1000)
+        # 달력 완료(청록)·못 한 반복(빨강)·지난 달 기록 (v3.29)
+        mk = await pg.evaluate("""async () => { const t = sod(new Date()), lid = S.listId, D = n => ymd(addD(t, n)), mk = (title, due, done, rep) => batch([{ method: 'post', url: taskUrl(lid), body: { title, notes: rep ? '↻반복=daily' : '', due: due + 'T00:00:00.000Z' } }]).then(async o => { if (done) await api('taskUpdate', { listId: lid, id: o[0].body.id, patch: { done: true } }, true); return o[0].body.id; });
+          await mk('QA습관', D(-4), true, 1); await mk('QA습관', D(-2), true, 1); await mk('QA습관', D(0), false, 1); await mk('QA옛완료', D(-75), true, 0);
+          await loadTasks(true); await new Promise(r => setTimeout(r, 400)); while (repBusy) await new Promise(r => setTimeout(r, 100));
+          const m = calMarks(); const r = { missN: [D(-3), D(-1)].map(k => (m.missNames[k] || []).includes('QA습관')), notMiss: [D(-4), D(-2), D(-5)].map(k => (m.missNames[k] || []).includes('QA습관')), done4: m.done[D(-4)] || 0 };
+          st.cur = sod(new Date()); st.view = 'month'; st.tab = 'cal'; render(); await new Promise(r => setTimeout(r, 300));
+          const cell = k => document.querySelector('.mday[data-day="' + k + '"]'); const okIn = k => { const c = cell(k); const e = c && c.querySelector('.tdue.ok'); return e ? +e.innerText : 0; }; const redIn = k => { const c = cell(k); const e = c && c.querySelector('.tdue.late:not(.latesum)'); return e ? +e.innerText : 0; };
+          r.cellOk = cell(D(-4)) ? okIn(D(-4)) >= 1 : 'skip'; r.cellRed = cell(D(-3)) ? redIn(D(-3)) >= 1 : 'skip';
+          const old = addD(t, -75); st.cur = new Date(old.getFullYear(), old.getMonth(), 1); render(); for (let i = 0; i < 30 && !HIST[mkey(old)]; i++) await new Promise(r => setTimeout(r, 100)); await new Promise(r => setTimeout(r, 200));
+          r.hist = !!HIST[mkey(old)]; r.histOk = okIn(D(-75)) >= 1; st.cur = sod(new Date()); render(); return r; }""")
+        if mk != {'missN': [True, True], 'notMiss': [False, False, False], 'done4': 1, 'cellOk': True, 'cellRed': True, 'hist': True, 'histOk': True} and not (mk.get('cellOk') == 'skip' or mk.get('cellRed') == 'skip'): iss.append(f'달력 완료·못 한 반복 표시 이상: {mk}')
+        await pg.screenshot(path=f'{OUT}/완료표시_월간.png')
+        await pg.click('#vWeek'); await pg.wait_for_timeout(700); await pg.screenshot(path=f'{OUT}/완료표시_주간.png'); iss += await pg.evaluate(CHECK)
+        await pg.click('#vMonth'); await pg.wait_for_timeout(600)
+        await pg.evaluate("() => openDay(addD(sod(new Date()), -3))"); await pg.wait_for_timeout(700)
+        if '못 한 반복' not in await pg.inner_text('.sheet'): iss.append('하루 시트에 못 한 반복이 안 보임')
+        await pg.screenshot(path=f'{OUT}/완료표시_하루.png'); await pg.evaluate('closeAll()'); await pg.wait_for_timeout(400)
+        await pg.evaluate("""async () => { for (const x of T.tasks.filter(y => /^QA(습관|옛완료)/.test(y.title))) await batch([{ method: 'delete', url: taskUrl(x.listId, x.id) }]); Object.keys(HIST).forEach(k => delete HIST[k]); await loadTasks(true); }""")
+        await pg.click('#nTask'); await pg.wait_for_timeout(800)
         # 경합: 새로고침이 떠 있는 동안 체크/일정 추가 → 덮이지 않아야 함
         rc = await pg.evaluate("""async () => { const row = document.querySelector('#main .trow[data-tid]:not(.done)'), id = row.dataset.tid, el = row.querySelector('input'); const p = loadTasks(true); el.checked = true; taskToggle(id, el); await p; const mid = T.tasks.find(y => y.id === id).done; await new Promise(r => setTimeout(r, 2600)); const end = T.tasks.find(y => y.id === id).done;
           const x = T.tasks.find(y => y.id === id); await api('taskUpdate', { listId: x.listId, id, patch: { done: false } }, true); await loadTasks(true); drawTasks(); return { mid, end }; }""")
