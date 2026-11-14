@@ -1,6 +1,6 @@
 <script>
 'use strict';
-const APP_V = '3.29';
+const APP_V = '3.30';
 /* ========== 기본 도구 ========== */
 const $ = s => document.querySelector(s);
 const pad = n => String(n).padStart(2, '0');
@@ -88,12 +88,12 @@ const Demo = (() => {
       const ml = u.match(/\/lists\/([^/]+)\/tasks(?:\?(.*))?$/);
       if (ml) { // 목록 조회(dueMin)·새 할 일 — 반복 할 일 엔진용
         const lid = ml[1], gt = x => ({ id: x.id, title: x.title, notes: x.notes, due: x.due ? x.due + 'T00:00:00.000Z' : undefined, status: x.done ? 'completed' : 'needsAction', completed: x.completed || undefined, parent: x.parent || undefined });
-        if (m === 'post') { const b = r.body || {}, x = { id: 't' + seq++, listId: lid, title: b.title || '', notes: b.notes || '', due: b.due ? b.due.slice(0, 10) : '', done: false, completed: '', parent: '' }; tasks.unshift(x); return { code: 200, body: gt(x) }; }
+        if (m === 'post') { const b = r.body || {}, dn = b.status === 'completed', x = { id: 't' + seq++, listId: lid, title: b.title || '', notes: b.notes || '', due: b.due ? b.due.slice(0, 10) : '', done: dn, completed: dn ? new Date().toISOString() : '', parent: '' }; tasks.unshift(x); return { code: 200, body: gt(x) }; }
         const qp = new URLSearchParams(ml[2] || ''), dm = (qp.get('dueMin') || '').slice(0, 10), dx = (qp.get('dueMax') || '').slice(0, 10);
         return { code: 200, body: { items: tasks.filter(x => x.listId === lid && (!dm || (x.due && x.due >= dm)) && (!dx || (x.due && x.due <= dx))).map(gt) } };
       }
       let mt = u.match(/\/lists\/([^/]+)\/tasks\/([^/?]+)/);
-      if (mt) { const x = tasks.find(y => y.id === mt[2]); if (!x) return { code: 404, body: null }; if (m === 'delete') { tasks = tasks.filter(y => y.id !== x.id && y.parent !== x.id); return { code: 204, body: null }; } const b = r.body || {}; if (b.title != null) x.title = b.title; if (b.notes !== undefined) x.notes = b.notes || ''; if (b.due !== undefined) x.due = b.due ? b.due.slice(0, 10) : ''; return { code: 200, body: { id: x.id, title: x.title, notes: x.notes, due: x.due ? x.due + 'T00:00:00.000Z' : undefined, status: x.done ? 'completed' : 'needsAction' } }; }
+      if (mt) { const x = tasks.find(y => y.id === mt[2]); if (!x) return { code: 404, body: null }; if (m === 'delete') { tasks = tasks.filter(y => y.id !== x.id && y.parent !== x.id); return { code: 204, body: null }; } const b = r.body || {}; if (b.title != null) x.title = b.title; if (b.notes !== undefined) x.notes = b.notes || ''; if (b.due !== undefined) x.due = b.due ? b.due.slice(0, 10) : ''; if (b.status) { x.done = b.status === 'completed'; x.completed = x.done ? new Date().toISOString() : ''; } return { code: 200, body: { id: x.id, title: x.title, notes: x.notes, due: x.due ? x.due + 'T00:00:00.000Z' : undefined, status: x.done ? 'completed' : 'needsAction', completed: x.completed || undefined } }; }
       mt = u.match(/\/calendars\/([^/]+)\/events(?:\/([^/?]+))?(\/move\?destination=(.+))?/); if (!mt) return { code: 404, body: null };
       const res = x => ({ id: x.id, summary: x.title, location: x.location, description: x.desc, start: x.allDay ? { date: x.start } : { dateTime: x.start }, end: x.allDay ? { date: x.end } : { dateTime: x.end }, extendedProperties: x.gantt ? { private: x.gantt } : undefined });
       if (!mt[2] && m === 'post') { const b = r.body, pv = b.extendedProperties && b.extendedProperties.private; const x = { id: 'd' + seq++, calId: mt[1], title: b.summary, allDay: !!b.start.date, start: b.start.date || b.start.dateTime, end: b.end.date || b.end.dateTime, color: col(mt[1]), location: b.location || '', desc: b.description || '', recurring: false, gantt: pv && pv.gantt === '1' ? Object.assign({}, pv) : null }; (x.gantt ? phases : evs).push(x); return { code: 200, body: res(x) }; }
@@ -389,7 +389,7 @@ async function openDay(d) {
     if (act === 'add') openCreate({ date: d });
     if (act === 'import') openDuplicate({ mode: 'import', target: d });
     if (act === 'task') { const x = T.tasks.find(y => y.id === t.dataset.id); if (x && !String(x.id).startsWith('tmp')) openTask(x); }
-  }, { height: '78%', onChange: e => { const t = e.target; if (t.dataset.tk) taskToggle(t.dataset.tk, t); } });
+  }, { height: '78%', onChange: e => { const t = e.target; if (t.dataset.tk) taskToggle(t.dataset.tk, t); else if (t.dataset.miss) repMarkDone(t.dataset.miss, t.dataset.day, t); } });
   const body = sh.querySelector('#tlbody'), starts = timed.map(it => it.a).filter(m => m >= 360 && m < 1380);
   body.scrollTop = Math.max(0, ((same(now, d) ? mins(now) - 90 : (starts.length ? Math.min(...starts) - 30 : 420)) / 60) * PX);
 }
@@ -492,7 +492,10 @@ function dayTasksHTML(k) {
   const row = (x, isLate, sub) => '<div class="trow dt' + (x.done ? ' done' : '') + (isLate && !x.done ? ' late' : '') + '" data-tid="' + esc(x.id) + '">' + ckHTML(x.title + ' 완료', 'data-tk="' + esc(x.id) + '"' + (x.done ? ' checked' : '')) + '<button class="tmain" data-a="task" data-id="' + esc(x.id) + '"><span class="ttl">' + esc(x.title) + '<i class="strike"></i></span>' + (sub || repOf(x.notes) ? '<span class="tmeta">' + (repOf(x.notes) ? repBadge(x, repOf(x.notes)) + (sub ? ' · ' : '') : '') + (sub || '') + '</span>' : '') + '</button></div>';
   let h = ''; const mk = calMarks(), nd = xs.filter(x => x.done).length, missed = mk.missNames[k] || [];
   if (xs.length) h += '<div class="dthead"><span>할 일</span><em>' + xs.filter(x => !x.done).length + '개 남음' + (nd ? ' · <b class="okt">완료 ' + nd + '</b>' : '') + (late && xs.some(x => !x.done) ? ' · 밀린 일' : '') + '</em></div>' + xs.map(x => row(x, late)).join('');
-  if (missed.length) h += '<div class="dthead late"><span>못 한 반복</span><em>' + missed.map(esc).join(', ') + '</em></div>';
+  // 못 한 반복: 체크하면 '이 날 한 것'으로 기록 (했는데 체크를 못 한 경우 바로잡기, v3.30)
+  if (missed.length) h += '<div class="dthead late"><span>못 한 반복</span><em>했다면 체크해서 바로잡으세요</em></div>'
+    + missed.map(m => '<div class="trow dt late miss">' + ckHTML(m.title + ' ' + koD(pymd(k)) + '에 한 것으로 기록', 'data-miss="' + esc(m.g) + '" data-day="' + k + '"') + '<span class="tmain"><span class="ttl">' + esc(m.title) + '<i class="strike"></i></span><span class="tmeta">↻ 이 날 기록 없음</span></span></div>').join('');
+  if (late && (xs.length || missed.length)) h += '<p class="note dtnote">지난 날짜도 체크하거나 해제해서 바로잡을 수 있어요.</p>';
   if (lt.length) h += '<div class="dthead late"><span>밀린 일</span><em>' + lt.length + '개 · 체크하면 완료, 눌러서 날짜 바꾸기</em></div>' + lt.map(x => row(x, true, koD(pymd(x.due)) + ' 까지였음')).join('');
   return h;
 }
@@ -520,7 +523,7 @@ function calMarks() {
     const has = new Set(xs.filter(x => x.done || x.due >= today).map(x => x.due)), openOn = new Set(xs.filter(x => !x.done).map(x => x.due));
     for (let d = pymd(dues[0]), guard = 0; ymd(d) < today && guard < 800; d = addD(d, 1), guard++) {
       const k = ymd(d); if (!repHits(r, d) || has.has(k) || openOn.has(k) || !covered(k)) continue;
-      miss[k] = (miss[k] || 0) + 1; (missNames[k] = missNames[k] || []).push(h.title);
+      miss[k] = (miss[k] || 0) + 1; (missNames[k] = missNames[k] || []).push({ g, title: h.title });
     }
   });
   const late = dueOpen().filter(x => x.due < today).length;
@@ -935,10 +938,38 @@ function openTask(x) {
   restyle();
 }
 const nextDue = w => { const t = sod(new Date()); if (w === 'today') return ymd(t); if (w === 'tomorrow') return ymd(addD(t, 1)); if (w === 'nextmon') return ymd(addD(t, ((8 - t.getDay()) % 7) || 7)); return ''; };
+// 못 한 반복을 '그 날 한 것'으로 기록: 그 날짜 마감·완료 상태인 회차를 하나 만듦. 반복 표식은 안 넣음(규칙은 지금 회차가 계속 가짐)
+async function repMarkDone(g, day, el) {
+  const xs = (T.tasks || []).filter(x => !x.parent && repKey(x) === g), h = repHead(xs);
+  if (!h || !day || day >= ymd(sod(new Date()))) { el.checked = false; return; }
+  el.disabled = true; const row = el.closest('.trow'); if (row) row.classList.add('done', 'jd');
+  try {
+    const out = await batch([{ method: 'post', url: taskUrl(h.listId), body: { title: h.title, notes: repStrip(h.notes), due: day + 'T00:00:00.000Z', status: 'completed' } }]);
+    let b = out[0].body;
+    if (b && b.status !== 'completed') b = (await batch([{ method: 'patch', url: taskUrl(h.listId, b.id), body: { status: 'completed' } }]))[0].body; // 만들 때 완료가 안 먹은 경우
+    const t = mapGTask(b, h.listId); t.done = true; t.completed = t.completed || new Date().toISOString();
+    T.tasks.push(t); saveTasks(); toast(koD(pymd(day)) + '에 한 것으로 기록했어요');
+    setTimeout(tasksChangedOnCal, 700);
+  } catch (err) { el.checked = false; el.disabled = false; if (row) row.classList.remove('done', 'jd'); toast('기록 실패: ' + err.message); }
+}
+// 반복 묶음의 지난 회차를 '안 한 것'으로 되돌릴 때: 열린 채로 두면 밀린 일로 쌓이거나 반복 규칙과 꼬이므로 그 회차 기록을 지움
+// (지금 진행 중인 회차가 따로 있을 때만. 마지막 회차면 보통처럼 되돌려 반복이 이어지게 함)
+function repUndoAsDelete(x) {
+  if (x.parent || !x.done || !x.due || x.due >= ymd(sod(new Date()))) return false;
+  const g = repKey(x), xs = (T.tasks || []).filter(y => !y.parent && repKey(y) === g && y.id !== x.id);
+  if (!xs.some(y => repOf(y.notes)) && !repOf(x.notes)) return false; // 반복 묶음이 아님
+  return xs.some(y => !y.done || (y.due || '') > x.due); // 더 최근 회차가 있음
+}
 async function taskToggle(id, el) {
   const x = T.tasks.find(y => y.id === id); if (!x) return;
   if (String(id).startsWith('tmp')) { el.checked = x.done; toast('저장 중이에요. 잠시 뒤 다시 눌러 주세요'); return; } // 아직 구글에 만들어지는 중
   const done = !x.done, rowEl = el.closest('.trow');
+  if (!done && repUndoAsDelete(x)) { // 반복의 지난 회차 체크 해제 = 그 날 '안 한 것'으로 (기록 삭제 → 달력에 빨강으로 돌아감)
+    el.disabled = true;
+    try { await batch([{ method: 'delete', url: taskUrl(x.listId, x.id) }]); T.tasks = T.tasks.filter(y => y.id !== x.id); saveTasks(); toast(koD(pymd(x.due)) + ' 기록을 취소했어요'); setTimeout(drawTasks, 500); }
+    catch (err) { el.checked = true; el.disabled = false; toast('취소 실패: ' + err.message); }
+    return;
+  }
   x.done = done; x.completed = done ? new Date().toISOString() : ''; saveTasks();
   rowEl.classList.remove('jd', 'ju'); void rowEl.offsetWidth;
   rowEl.classList.toggle('done', done); rowEl.classList.add(done ? 'jd' : 'ju');

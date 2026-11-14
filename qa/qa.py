@@ -208,7 +208,7 @@ async def run():
         mk = await pg.evaluate("""async () => { const t = sod(new Date()), lid = S.listId, D = n => ymd(addD(t, n)), mk = (title, due, done, rep) => batch([{ method: 'post', url: taskUrl(lid), body: { title, notes: rep ? '↻반복=daily' : '', due: due + 'T00:00:00.000Z' } }]).then(async o => { if (done) await api('taskUpdate', { listId: lid, id: o[0].body.id, patch: { done: true } }, true); return o[0].body.id; });
           await mk('QA습관', D(-4), true, 1); await mk('QA습관', D(-2), true, 1); await mk('QA습관', D(0), false, 1); await mk('QA옛완료', D(-75), true, 0);
           await loadTasks(true); await new Promise(r => setTimeout(r, 400)); while (repBusy) await new Promise(r => setTimeout(r, 100));
-          const m = calMarks(); const r = { missN: [D(-3), D(-1)].map(k => (m.missNames[k] || []).includes('QA습관')), notMiss: [D(-4), D(-2), D(-5)].map(k => (m.missNames[k] || []).includes('QA습관')), done4: m.done[D(-4)] || 0 };
+          const m = calMarks(); const r = { missN: [D(-3), D(-1)].map(k => (m.missNames[k] || []).some(o => o.title === 'QA습관')), notMiss: [D(-4), D(-2), D(-5)].map(k => (m.missNames[k] || []).some(o => o.title === 'QA습관')), done4: m.done[D(-4)] || 0 };
           st.cur = sod(new Date()); st.view = 'month'; st.tab = 'cal'; render(); await new Promise(r => setTimeout(r, 300));
           const cell = k => document.querySelector('.mday[data-day="' + k + '"]'); const okIn = k => { const c = cell(k); const e = c && c.querySelector('.tdue.ok'); return e ? +e.innerText : 0; }; const redIn = k => { const c = cell(k); const e = c && c.querySelector('.tdue.late:not(.latesum)'); return e ? +e.innerText : 0; };
           r.cellOk = cell(D(-4)) ? okIn(D(-4)) >= 1 : 'skip'; r.cellRed = cell(D(-3)) ? redIn(D(-3)) >= 1 : 'skip';
@@ -220,7 +220,21 @@ async def run():
         await pg.click('#vMonth'); await pg.wait_for_timeout(600)
         await pg.evaluate("() => openDay(addD(sod(new Date()), -3))"); await pg.wait_for_timeout(700)
         if '못 한 반복' not in await pg.inner_text('.sheet'): iss.append('하루 시트에 못 한 반복이 안 보임')
-        await pg.screenshot(path=f'{OUT}/완료표시_하루.png'); await pg.evaluate('closeAll()'); await pg.wait_for_timeout(400)
+        await pg.screenshot(path=f'{OUT}/완료표시_하루.png')
+        # 바로잡기: 못 한 반복 체크 → 그 날 완료 기록 생김(청록), 다시 해제 → 기록 지워짐(빨강으로 복귀), 진행 중 회차는 그대로
+        await pg.click('.sheet .trow.miss label.ck'); await pg.wait_for_timeout(1500)
+        fx = await pg.evaluate("""() => { const k = ymd(addD(sod(new Date()), -3)), m = calMarks(); const inst = T.tasks.filter(x => x.title === 'QA습관' && x.due === k);
+          return { made: inst.length, done: inst.every(x => x.done), noMarker: inst.every(x => !repOf(x.notes)), missGone: !(m.missNames[k] || []).some(o => o.title === 'QA습관'), ok: m.done[k] || 0, sheetOk: document.querySelector('.sheet').innerText.includes('완료 1'), openNow: T.tasks.filter(x => x.title === 'QA습관' && !x.done).length }; }""")
+        if fx != {'made': 1, 'done': True, 'noMarker': True, 'missGone': True, 'ok': 1, 'sheetOk': True, 'openNow': 1}: iss.append(f'못 한 반복 바로잡기 이상: {fx}')
+        await pg.click('.sheet .trow.done label.ck'); await pg.wait_for_timeout(1500)
+        ux = await pg.evaluate("""() => { const k = ymd(addD(sod(new Date()), -3)), m = calMarks(); return { left: T.tasks.filter(x => x.title === 'QA습관' && x.due === k).length, missBack: (m.missNames[k] || []).some(o => o.title === 'QA습관'), openNow: T.tasks.filter(x => x.title === 'QA습관' && !x.done).length }; }""")
+        if ux != {'left': 0, 'missBack': True, 'openNow': 1}: iss.append(f'바로잡기 취소 이상: {ux}')
+        # 지난 날짜 일반 할 일: 체크하면 그 날 칸이 청록으로
+        gx = await pg.evaluate("""async () => { const k = ymd(addD(sod(new Date()), -3)), lid = S.listId; const o = await batch([{ method: 'post', url: taskUrl(lid), body: { title: 'QA지난일', notes: '', due: k + 'T00:00:00.000Z' } }]); T.tasks.push(mapGTask(o[0].body, lid)); closeAll(); await new Promise(r => setTimeout(r, 300)); await openDay(pymd(k)); await new Promise(r => setTimeout(r, 500));
+          const row = [...document.querySelectorAll('.sheet .trow.dt')].find(r => r.innerText.includes('QA지난일')); row.querySelector('label.ck').click(); await new Promise(r => setTimeout(r, 1700));
+          const r = { done: T.tasks.find(x => x.title === 'QA지난일').done, ok: calMarks().done[k] || 0 }; await batch([{ method: 'delete', url: taskUrl(lid, o[0].body.id) }]); T.tasks = T.tasks.filter(x => x.title !== 'QA지난일'); return r; }""")
+        if gx != {'done': True, 'ok': 1}: iss.append(f'지난 날짜 할 일 체크 이상: {gx}')
+        await pg.evaluate('closeAll()'); await pg.wait_for_timeout(400)
         await pg.evaluate("""async () => { for (const x of T.tasks.filter(y => /^QA(습관|옛완료)/.test(y.title))) await batch([{ method: 'delete', url: taskUrl(x.listId, x.id) }]); Object.keys(HIST).forEach(k => delete HIST[k]); await loadTasks(true); }""")
         await pg.click('#nTask'); await pg.wait_for_timeout(800)
         # 경합: 새로고침이 떠 있는 동안 체크/일정 추가 → 덮이지 않아야 함

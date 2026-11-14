@@ -99,16 +99,19 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;position:relative}
 .pill{width:13px;height:6px;border-radius:3px;box-shadow:0 1px 2px rgba(0,0,0,.5)}
 /* 할 일 표시 (캘린더↔할 일 연결, v3.29): 전부 '선(테두리)만', 채우기 없음 — 일정 색 막대·AI 연두 글자와 섞이지 않게
    청록 ✓ = 끝낸 할 일 · 금색 ☑ = 남은 할 일 · 빨강 ☑ = 지난 날짜에 못 한 일 · 빨강 숫자 = 지금 밀린 일 합계(오늘) */
-:root{--ok:#5CC8B8}
+:root{--ok:#5CC8B8;--bad:#F2543F} /* --bad: 할 일 '못 함' 전용 진한 빨강(v3.30). 일요일 글자색 --sun과 별개 */
 .tdues{position:absolute;left:3px;right:3px;bottom:3px;display:flex;flex-wrap:wrap-reverse;gap:2px;pointer-events:none}
 .tdues .tdue{position:static}
-.dthead.late span{color:var(--sun)}
+.dthead.late span{color:var(--bad)}
+.trow.dt.miss .ckbox{border-color:var(--bad)}
+.trow.dt.miss .ttl{color:var(--bad)}
+.daytasks p.note.dtnote{margin:4px 16px 8px;font-size:calc(11px*var(--fz,1))}
 .dthead .okt{color:var(--ok);font-weight:500}
 .trow.dt .tmain{display:flex;flex-direction:column;gap:1px}
 .tdue{position:absolute;left:3px;bottom:3px;display:inline-flex;align-items:center;gap:1px;height:14px;padding:0 3px 0 2px;border-radius:4px;border:1px solid rgba(227,196,142,.6);background:rgba(14,9,7,.9);color:var(--goldL);font-size:calc(9px*var(--fz,1));font-weight:700;line-height:1;pointer-events:none}
-.tdue.late{border-color:rgba(232,149,122,.75);color:var(--sun)}
+.tdue.late{border-color:var(--bad);color:var(--bad);border-width:1.5px}
 .tdue.ok{border-color:rgba(92,200,184,.75);color:var(--ok)}
-.tdue.latesum{border-color:rgba(232,149,122,.9);color:var(--sun);min-width:14px;justify-content:center;padding:0 3px}
+.tdue.latesum{border-color:var(--bad);color:var(--bad);border-width:1.5px;min-width:14px;justify-content:center;padding:0 3px}
 .wkh{position:relative}
 /* 주간 머리: 날짜 동그라미 오른쪽 위 = 남은/못 한 일, 왼쪽 위 = 끝낸 일, 오른쪽 아래 = 밀린 일 합계(오늘) */
 .wkh .tdue{left:calc(50% + 6px);bottom:auto;top:17px;min-width:14px;height:14px;padding:0 3px;border-radius:7px;justify-content:center;font-size:calc(8.5px*var(--fz,1))}
@@ -122,7 +125,7 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;position:relative}
 .dthead em{font-style:normal;font-size:calc(10.5px*var(--fz,1));color:var(--mut)}
 .trow.dt{min-height:42px;padding-left:6px;border-bottom:none}
 .trow.dt .tmain{border:none;background:transparent;text-align:left;color:inherit;padding:6px 12px 6px 0}
-.trow.dt.late .ttl{color:var(--sun)}
+.trow.dt.late .ttl{color:var(--bad)}
 .more{position:absolute;left:0;right:0;bottom:3px;text-align:center;font-size:calc(9.5px*var(--fz,1));color:var(--mut);pointer-events:none}
 
 /* week */
@@ -264,7 +267,7 @@ label>input[type=date]:not(.inp)::-webkit-calendar-picker-indicator{position:abs
 .ck{position:relative;width:44px;height:44px;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer}
 .ck input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer}
 .ckbox{width:22px;height:22px;border-radius:11px;border:1.5px solid #8E6B3A;display:flex;align-items:center;justify-content:center;transition:box-shadow .5s;pointer-events:none}
-.trow.late .ckbox{border-color:var(--sun)}
+.trow.late .ckbox{border-color:var(--bad)}
 .ckbox svg path{stroke-dasharray:26;stroke-dashoffset:26}
 .trow.done .ckbox{background:var(--gold);border:1px solid #F3DCA6;box-shadow:0 0 8px rgba(227,196,142,.35)}
 .trow.done .ckbox svg path{stroke-dashoffset:0}
