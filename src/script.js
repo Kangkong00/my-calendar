@@ -1,6 +1,6 @@
 <script>
 'use strict';
-const APP_V = '3.30';
+const APP_V = '3.31';
 /* ========== 기본 도구 ========== */
 const $ = s => document.querySelector(s);
 const pad = n => String(n).padStart(2, '0');
@@ -22,7 +22,7 @@ const fg = hex => { try { const L = lum(hex); return (L + .05) / .055 >= 1.05 / 
 const ICON = {
   x: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
   plus: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
-  chk: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#140D09" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  chk: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
   chev: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>',
   chevL: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg>',
   spark: '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.2 6.3L20.5 10l-6.3 2.2L12 18.5l-2.2-6.3L3.5 10l6.3-1.7z"/><path d="M19 15l.9 2.4 2.4.9-2.4.9L19 21.6l-.9-2.4-2.4-.9 2.4-.9z" opacity=".7"/></svg>'
@@ -378,10 +378,10 @@ async function openDay(d) {
     const real = ko(mins(it.x.s)) + ' – ' + ko(mins(it.x.e));
     tl += '<button class="tb" data-a="ev" data-k="' + esc(it.x.calId + '|' + it.x.id + '|' + it.x.start) + '" style="top:' + top + 'px;height:' + ht + 'px;left:calc(56px + (100% - 56px) * ' + (it.col / it.n) + ');width:calc((100% - 56px) / ' + it.n + ' - 3px);background:linear-gradient(180deg,' + it.x.color + ',' + it.x.color + 'D9);color:' + fg(it.x.color) + '"><b>' + esc(tagless(it.x.title)) + '</b>' + (ht >= 38 ? '<small>' + real + '</small>' : '') + '</button>';
   });
-  if (same(now, d)) tl += '<div style="position:absolute;left:0;right:0;top:' + (mins(now) / 60 * PX + 4) + 'px;display:flex;align-items:center;pointer-events:none"><span style="width:8px;height:8px;border-radius:4px;background:#E3C48E;margin-left:50px;box-shadow:0 0 8px rgba(227,196,142,.8)"></span><span style="flex:1;height:1.5px;background:linear-gradient(90deg,#E3C48E,rgba(227,196,142,.1))"></span></div>';
+  if (same(now, d)) tl += '<div style="position:absolute;left:0;right:0;top:' + (mins(now) / 60 * PX + 4) + 'px;display:flex;align-items:center;pointer-events:none"><span style="width:8px;height:8px;border-radius:4px;background:var(--goldL);margin-left:50px;box-shadow:0 0 8px rgba(var(--aLRGB),.8)"></span><span style="flex:1;height:1.5px;background:linear-gradient(90deg,var(--goldL),rgba(var(--aLRGB),.1))"></span></div>';
   tl += '</div>';
   const html = '<div class="shead"><h2 class="serif">' + koD(d) + (same(d, now) ? ' · 오늘' : '') + '</h2><div class="row"><button class="obtn" data-a="import">일정 가져오기</button><button class="ibtn" data-a="add" aria-label="이 날 새 일정">' + ICON.plus + '</button></div></div>'
-    + (allDay.length ? '<div style="display:flex;gap:8px;padding:8px 16px;border-bottom:1px solid #2A1D15;flex-shrink:0"><span class="lab" style="line-height:28px;width:34px;white-space:nowrap;flex-shrink:0">종일</span><div class="adlist">' + allDay.map(x => '<button class="adchip" data-a="ev" data-k="' + esc(x.calId + '|' + x.id + '|' + x.start) + '" style="background:' + (isHol(x.calId) ? 'transparent;border:1px solid #6E5236' : x.color) + ';color:' + (isHol(x.calId) ? 'var(--sun)' : fg(x.color)) + '">' + esc(tagless(x.title)) + '</button>').join('') + '</div></div>' : '')
+    + (allDay.length ? '<div style="display:flex;gap:8px;padding:8px 16px;border-bottom:1px solid var(--line4);flex-shrink:0"><span class="lab" style="line-height:28px;width:34px;white-space:nowrap;flex-shrink:0">종일</span><div class="adlist">' + allDay.map(x => '<button class="adchip" data-a="ev" data-k="' + esc(x.calId + '|' + x.id + '|' + x.start) + '" style="background:' + (isHol(x.calId) ? 'transparent;border:1px solid var(--line6)' : x.color) + ';color:' + (isHol(x.calId) ? 'var(--sun)' : fg(x.color)) + '">' + esc(tagless(x.title)) + '</button>').join('') + '</div></div>' : '')
     + '<div class="daytasks" data-daytasks="' + ymd(d) + '">' + dayTasksHTML(ymd(d)) + '</div>'
     + '<div class="sbody" style="padding:6px 0 calc(20px + var(--sat-bot));gap:0" id="tlbody">' + (items.length ? '' : '<p class="note" style="padding:10px 16px">일정이 없는 날입니다. 위의 "일정 가져오기"로 어제 일정을 복제할 수 있어요.</p>') + tl + '</div>';
   const sh = openSheet(html, (act, t) => {
@@ -576,7 +576,7 @@ function openDetail(ev) {
     + '<div style="display:flex;gap:12px;align-items:flex-start"><span style="width:10px;align-self:stretch;min-height:44px;border-radius:5px;background:linear-gradient(180deg,' + ev.color + ',' + ev.color + 'A0);box-shadow:0 0 10px ' + ev.color + '66"></span><div style="display:flex;flex-direction:column;gap:4px"><h2 class="serif" style="margin:0;font-size:calc(19px*var(--fz,1));color:var(--ink)">' + esc(ev.title) + '</h2><span class="note">' + when + '</span><span class="note">' + esc(cal.name) + (ev.recurring ? ' · 반복 일정' : '') + '</span></div></div>'
     + (ev.location ? '<div><div class="lab">장소</div><p class="note" style="color:var(--ink)">' + esc(ev.location) + '</p></div>' : '')
     + (ev.desc ? '<div><div class="lab">메모</div><p class="note" style="color:var(--ink);white-space:pre-wrap">' + esc(ev.desc) + '</p></div>' : '')
-    + '<div class="row" style="gap:8px">' + (cal.owned ? '<button class="obtn" data-a="edit" style="flex:1;height:48px;border-color:#8E6B3A;color:var(--goldL)">수정</button>' : '') + '<button class="gbtn" data-a="dup" style="flex:1.4;height:48px">복제하기</button>' + (cal.owned ? '<button class="obtn" data-a="del" style="flex:1;height:48px">' + (ev.recurring ? '이 날만 삭제' : '삭제') + '</button>' : '') + '</div>'
+    + '<div class="row" style="gap:8px">' + (cal.owned ? '<button class="obtn" data-a="edit" style="flex:1;height:48px;border-color:var(--a3);color:var(--goldL)">수정</button>' : '') + '<button class="gbtn" data-a="dup" style="flex:1.4;height:48px">복제하기</button>' + (cal.owned ? '<button class="obtn" data-a="del" style="flex:1;height:48px">' + (ev.recurring ? '이 날만 삭제' : '삭제') + '</button>' : '') + '</div>'
     + (ev.recurring ? '<p class="note">수정·삭제는 이 날 일정에만 적용됩니다. 반복 전체를 바꾸려면 구글 캘린더에서 해 주세요.</p>' : '') + '</div>';
   let armed = false;
   openSheet(html, async (a, t) => {
@@ -584,7 +584,7 @@ function openDetail(ev) {
     if (a === 'dup') openDuplicate({ mode: 'event', items: [ev] });
     if (a === 'edit') { if (S.sv && S.sv < 3) { toast('데이터 창구 업데이트 후 쓸 수 있어요'); return; } openCreate({ edit: ev }); }
     if (a === 'del') {
-      if (!armed) { armed = true; t.textContent = '한 번 더 누르면 삭제'; t.style.borderColor = '#E8957A'; t.style.color = '#E8957A'; return; }
+      if (!armed) { armed = true; t.textContent = '한 번 더 누르면 삭제'; t.style.borderColor = 'var(--bad)'; t.style.color = 'var(--bad)'; return; }
       t.disabled = true;
       try { await api('delete', { calId: ev.calId, id: ev.id }, true); cacheRemove(ev); toast('삭제했습니다'); closeAll(); render(); } catch (err) { toast(err.message); t.disabled = false; }
     }
@@ -611,7 +611,7 @@ function openCreate(pre = {}) {
   const slots = () => { let s = ''; for (let m = 0; m < 1440; m += 30) s += '<button class="pillb' + (Math.floor(f.st / 30) * 30 === m ? ' on' : '') + '" data-a="slot" data-m="' + m + '">' + ko(m) + '</button>'; return s; };
   const body = () => '<label style="display:flex;flex-direction:column;gap:4px"><span class="lab">제목</span><input class="title-inp" id="fTitle" placeholder="일정 제목" value="' + esc(f.title) + '" autocomplete="off"></label>'
     + '<div style="display:flex;flex-direction:column;gap:8px"><span class="lab">캘린더 · 색은 구글 캘린더 색 그대로</span><div class="row">' + st.cals.filter(c => c.owned && !isHol(c.id)).map(c => '<button class="pillb' + (f.cal === c.id ? ' on' : '') + '" data-a="cal" data-id="' + esc(c.id) + '">' + esc(c.name) + '</button>').join('') + '<button class="pillb dash" data-a="newcat">+ 새 카테고리</button></div>'
-    + (f.newOpen ? '<div class="box" style="padding:14px;gap:12px;border-color:#6E5236"><span class="serif" style="font-size:calc(14px*var(--fz,1));color:var(--goldL)">새 카테고리</span><label style="display:flex;flex-direction:column;gap:6px"><span class="lab">이름</span><input class="inp" id="fNewName" placeholder="예: [Japanese]일본어하자" value="' + esc(f.newName) + '"></label><div class="swatches">' + SW.map(w => '<button aria-label="' + w[0] + '" class="' + (f.newColor.toLowerCase() === w[1].toLowerCase() ? 'on' : '') + '" data-a="sw" data-c="' + w[1] + '" style="background:' + w[1] + '"></button>').join('') + '</div><label class="row lab" style="min-height:44px"><input type="color" id="fNewColor" value="' + f.newColor + '" style="width:36px;height:36px;border:none;padding:0;background:transparent">직접 고르기</label><div class="row"><button class="obtn" data-a="newcat" style="flex:1">취소</button><button class="gbtn" data-a="mkcat" style="flex:2;height:44px">만들기</button></div><span class="lab">구글 캘린더에도 같은 이름·색으로 만들어집니다. 삭제·공유는 구글 캘린더에서 해 주세요.</span></div>' : '') + '</div>'
+    + (f.newOpen ? '<div class="box" style="padding:14px;gap:12px;border-color:var(--line6)"><span class="serif" style="font-size:calc(14px*var(--fz,1));color:var(--goldL)">새 카테고리</span><label style="display:flex;flex-direction:column;gap:6px"><span class="lab">이름</span><input class="inp" id="fNewName" placeholder="예: [Japanese]일본어하자" value="' + esc(f.newName) + '"></label><div class="swatches">' + SW.map(w => '<button aria-label="' + w[0] + '" class="' + (f.newColor.toLowerCase() === w[1].toLowerCase() ? 'on' : '') + '" data-a="sw" data-c="' + w[1] + '" style="background:' + w[1] + '"></button>').join('') + '</div><label class="row lab" style="min-height:44px"><input type="color" id="fNewColor" value="' + f.newColor + '" style="width:36px;height:36px;border:none;padding:0;background:transparent">직접 고르기</label><div class="row"><button class="obtn" data-a="newcat" style="flex:1">취소</button><button class="gbtn" data-a="mkcat" style="flex:2;height:44px">만들기</button></div><span class="lab">구글 캘린더에도 같은 이름·색으로 만들어집니다. 삭제·공유는 구글 캘린더에서 해 주세요.</span></div>' : '') + '</div>'
     + '<div class="box"><div class="boxrow" style="justify-content:space-between">종일<button class="switch' + (f.allDay ? ' on' : '') + '" role="switch" aria-checked="' + f.allDay + '" aria-label="종일" data-a="allday"><i></i></button></div>'
     + '<div class="boxrow"><span class="lab" style="width:30px">' + (f.allDay ? '시작' : '날짜') + '</span><input type="date" class="inp" id="fDate" value="' + f.date + '" style="flex:1;height:40px;border:none;background:transparent;padding:0"></div>'
     + (f.allDay ? '<div class="boxrow"><span class="lab" style="width:30px">종료</span><input type="date" class="inp" id="fEnd" value="' + f.endDate + '" style="flex:1;height:40px;border:none;background:transparent;padding:0"></div>'
@@ -622,7 +622,7 @@ function openCreate(pre = {}) {
     + (E ? (E.recurring ? '<p class="note">반복 일정 중 <b>이 날 것만</b> 바뀝니다.</p>' : '') : '<div style="display:flex;flex-direction:column;gap:8px"><span class="lab">반복</span><div class="row">' + RP.map(r => '<button class="pillb' + (f.rep === r[0] ? ' on' : '') + '" data-a="rep" data-v="' + r[0] + '">' + r[1] + '</button>').join('') + '</div>'
     + (f.rep === 'weekly' ? '<div class="wdays">' + WD.map((w, i) => '<button class="' + (f.days[i] ? 'on' : '') + '" data-a="wd" data-v="' + i + '">' + w + '</button>').join('') + '</div>' : '') + '</div>')
     + '<div style="display:flex;flex-direction:column;gap:8px"><span class="lab">' + (E && !f.alarmsTouched ? '알림 · 바꾸지 않으면 기존 알림 그대로' : '알림 · 평소엔 꺼짐') + '</span><div class="row">' + f.alarms.map(v => '<span class="alarmchip">' + AL.find(x => x[0] === v)[1] + '<button data-a="alrm" data-v="' + v + '" aria-label="알림 끄기">' + ICON.x + '</button></span>').join('') + '<button class="pillb dash" data-a="addal" style="min-height:40px">' + (f.adding ? '닫기' : '+ 알림 추가') + '</button></div>'
-    + (f.adding ? '<div class="row" style="padding:10px;border-radius:12px;background:#1B130E;border:1px solid var(--line)">' + AL.map(x => '<button class="pillb' + (f.alarms.includes(x[0]) ? ' on' : '') + '" data-a="alrm" data-v="' + x[0] + '">' + x[1] + '</button>').join('') + '</div>' : '') + '</div>'
+    + (f.adding ? '<div class="row" style="padding:10px;border-radius:12px;background:var(--s3);border:1px solid var(--line)">' + AL.map(x => '<button class="pillb' + (f.alarms.includes(x[0]) ? ' on' : '') + '" data-a="alrm" data-v="' + x[0] + '">' + x[1] + '</button>').join('') + '</div>' : '') + '</div>'
     + '<label style="display:flex;flex-direction:column;gap:6px"><span class="lab">장소</span><input class="inp" id="fLoc" placeholder="장소 추가" value="' + esc(f.loc) + '"></label>'
     + '<label style="display:flex;flex-direction:column;gap:6px"><span class="lab">메모</span><textarea class="inp" id="fMemo" placeholder="설명 추가">' + esc(f.memo) + '</textarea></label>'
     + '<p class="note">구글 캘린더 <b>' + esc((st.calMap[f.cal] || {}).name || '') + '</b>에 저장됩니다.</p>' + (E && E.recurring && f.cal !== E.calId ? '<p class="note" style="color:var(--sun)">반복 일정은 캘린더를 옮길 수 없어요.</p>' : '');
@@ -784,7 +784,7 @@ async function fillTaskPages(r) {
 }
 function renderTasks() {
   loadFont(S.noteFont || 'pen');
-  $('#hAlt').innerHTML = T.lists && T.lists.length > 1 ? '<select class="inp" id="listSel" aria-label="목록" style="height:40px;min-width:120px;border-radius:20px;font-size:calc(13px*var(--fz,1));background:#120C09">' + T.lists.map(l => '<option value="' + esc(l.id) + '"' + (l.id === S.listId ? ' selected' : '') + '>' + esc(l.title) + '</option>').join('') + '</select>' : '';
+  $('#hAlt').innerHTML = T.lists && T.lists.length > 1 ? '<select class="inp" id="listSel" aria-label="목록" style="height:40px;min-width:120px;border-radius:20px;font-size:calc(13px*var(--fz,1));background:var(--s2)">' + T.lists.map(l => '<option value="' + esc(l.id) + '"' + (l.id === S.listId ? ' selected' : '') + '>' + esc(l.title) + '</option>').join('') + '</select>' : '';
   drawTasks();
   loadTasks().then(ch => { if (st.tab === 'task' && (ch || !$('#tscroll'))) renderTasks(); }).catch(err => { if (!T.lists) $('#main').innerHTML = '<div class="empty">할 일을 불러오지 못했습니다.<br>' + esc(err.message) + '</div>'; });
 }
@@ -815,7 +815,7 @@ function drawTasks() {
       + '<label class="pillb pick' + (T.when === 'pick' ? ' on' : '') + '">' + (T.when === 'pick' && T.pick ? esc(koD(pymd(T.pick))) : '날짜 고르기') + '<input type="date" id="tPick" aria-label="날짜 고르기" value="' + esc(T.pick || '') + '"></label></div>'
       + '<div class="row qrow"><span class="lab qlab">반복</span>' + REP.map(q => '<button class="pillb' + (T.rep === q[0] ? ' on' : '') + '" data-trep="' + q[0] + '">' + q[1] + '</button>').join('') + '</div>';
   let h = '';
-  if (late.length) h += grp('밀린 일', 'late', late, 'late', '<button class="tside" data-rollall style="margin-right:0;border-color:#8E6B3A;background:rgba(201,164,106,.1)">모두 오늘로</button>');
+  if (late.length) h += grp('밀린 일', 'late', late, 'late', '<button class="tside" data-rollall style="margin-right:0;border-color:var(--a3);background:rgba(var(--aRGB),.1)">모두 오늘로</button>');
   h += grp('오늘 · ' + dl(today), '', tdy, 'today') + grp('다가오는 일', '', up, 'up') + grp('날짜 없음', 'mute', none, 'none');
   h += '<button class="donetoggle" data-donetog aria-expanded="' + T.showDone + '"><span style="display:inline-flex;transition:transform .2s;transform:rotate(' + (T.showDone ? 90 : 0) + 'deg)">' + ICON.chev + '</span>완료됨 ' + doneOld.length + '개</button>';
   if (T.showDone) h += '<div class="tlist" style="opacity:.85">' + (doneOld.length ? doneOld.slice(0, 50).map(x => row(x, 'done')).join('') : '<div class="note" style="padding:14px">최근 30일 동안 완료한 일이 여기 보입니다</div>') + '</div>';
@@ -844,7 +844,17 @@ const NF = id => NFONTS.find(x => x[0] === id) || NFONTS[0];
 const loadedFonts = {};
 function loadFont(id) { const f = NF(id); if (!f[3] || loadedFonts[f[3]]) return; loadedFonts[f[3]] = 1; const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = 'https://fonts.googleapis.com/css2?family=' + f[3] + '&display=swap'; document.head.appendChild(l); }
 const NFONT = new Proxy({}, { get: (_, k) => NF(k)[2] });
-const INKS = [['기본', '#E9DCC4'], ['금', '#E3C48E'], ['버건디', '#E07A6E'], ['청잉크', '#8FB2E0'], ['초록', '#8CC59A']];
+// 메모 잉크: 이름으로 저장([[금:글자]])하고 색은 테마별로 — 흰 종이에선 진한 잉크 (v3.31)
+const INK_SETS = { dark: [['기본', '#E9DCC4'], ['금', '#E3C48E'], ['버건디', '#E07A6E'], ['청잉크', '#8FB2E0'], ['초록', '#8CC59A']],
+  navy: [['기본', '#1E2430'], ['금', '#9A7631'], ['버건디', '#A8322B'], ['청잉크', '#1F4F9C'], ['초록', '#2D7A4C']] };
+const THEMES = [['dark', '다크 레더'], ['navy', '화이트 네이비']];
+const curTheme = () => (S.theme === 'navy' ? 'navy' : 'dark');
+const INKS = new Proxy([], { get: (_, k) => { const a = INK_SETS[curTheme()]; const v = a[k]; return typeof v === 'function' ? v.bind(a) : v; } });
+function applyTheme() {
+  const d = document.documentElement, t = curTheme();
+  if (t === 'navy') d.setAttribute('data-theme', 'navy'); else d.removeAttribute('data-theme');
+  const m = document.getElementById('themeColor'); if (m) m.setAttribute('content', t === 'navy' ? '#0D1C37' : '#0E0907');
+}
 /* 메모 서식: 구글 Tasks에는 글자만 저장되므로 **굵게** __밑줄__ [[금:글자]] 표시로 저장 */
 function noteToHtml(t) {
   let h = esc(t || '');
@@ -917,7 +927,7 @@ function openTask(x) {
     if (a === 'under') { exec('underline'); return; }
     if (a === 'ink') { exec('foreColor', t.dataset.v); return; }
     if (a === 'kdel') {
-      if (!f.armed) { f.armed = true; t.textContent = '한 번 더 누르면 삭제'; t.style.borderColor = '#E8957A'; t.style.color = '#E8957A'; return; }
+      if (!f.armed) { f.armed = true; t.textContent = '한 번 더 누르면 삭제'; t.style.borderColor = 'var(--bad)'; t.style.color = 'var(--bad)'; return; }
       t.disabled = true;
       try { const wasRep = !!repOf(x.notes), stop = repStopReqs(x); await batch([{ method: 'delete', url }].concat(stop.reqs)); stop.apply(); T.tasks = T.tasks.filter(y => y.id !== x.id && y.parent !== x.id); saveTasks(); toast(wasRep ? '삭제했습니다 · 반복도 멈췄어요' : '삭제했습니다'); closeSheet(); drawTasks(); } catch (err) { toast('삭제 실패: ' + err.message); t.disabled = false; }
       return;
@@ -1051,8 +1061,8 @@ function drawGantt() {
       const dn = sp.phases.filter(x => x.done).length, pct = Math.round(dn / sp.phases.length * 100);
       h += '<section class="gdet"><div style="display:flex;align-items:center;gap:10px"><span style="width:12px;height:40px;border-radius:6px;background:linear-gradient(180deg,' + sp.color + ',' + sp.color + 'A0);box-shadow:0 0 10px ' + sp.color + '66"></span><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><h3 class="serif" style="margin:0;font-size:calc(17px*var(--fz,1));color:var(--goldL)">' + esc(sp.name) + '</h3><span class="lab">' + md(sp.s) + ' – ' + md(new Date(sp.e.getTime() - 864e5)) + ' · ' + esc((st.calMap[sp.calId] || {}).name || '') + '</span></div><span class="serif goldtext" style="font-size:calc(26px*var(--fz,1))">' + pct + '%</span></div>'
         + '<div class="prog" style="margin:0"><div class="b"><i style="width:' + pct + '%"></i></div></div><div class="tlist" style="background:transparent;border:none">'
-        + sp.phases.map(ph => { const now = !ph.done && ph.s <= today && today < ph.e; return '<div class="trow' + (ph.done ? ' done' : '') + '">' + '<i class="shine"></i>' + ckHTML(ph.pname + ' 완료', 'data-gph="' + esc(ph.calId + '|' + ph.id) + '"' + (ph.done ? ' checked' : '')) + '<div class="tmain"><span class="ttl">' + esc(ph.pname) + '<i class="strike"></i></span><span class="tmeta">' + md(ph.s) + ' – ' + md(new Date(ph.e.getTime() - 864e5)) + '</span></div>' + (now ? '<span class="tside" style="border-color:#8E6B3A">진행 중</span>' : '') + '</div>'; }).join('')
-        + '</div><div class="row" style="gap:8px"><button class="obtn" data-gedit="' + esc(sp.id) + '" style="flex:2;height:46px;border-color:#8E6B3A;color:var(--goldL)">계획 수정</button><button class="obtn" data-gdel="' + esc(sp.id) + '" style="flex:1;height:46px">계획 삭제</button></div><p class="note">단계마다 구글 캘린더 <b>' + esc((st.calMap[sp.calId] || {}).name || '') + '</b>에 여러 날 종일 일정으로 저장되어 있습니다.</p></section>';
+        + sp.phases.map(ph => { const now = !ph.done && ph.s <= today && today < ph.e; return '<div class="trow' + (ph.done ? ' done' : '') + '">' + '<i class="shine"></i>' + ckHTML(ph.pname + ' 완료', 'data-gph="' + esc(ph.calId + '|' + ph.id) + '"' + (ph.done ? ' checked' : '')) + '<div class="tmain"><span class="ttl">' + esc(ph.pname) + '<i class="strike"></i></span><span class="tmeta">' + md(ph.s) + ' – ' + md(new Date(ph.e.getTime() - 864e5)) + '</span></div>' + (now ? '<span class="tside" style="border-color:var(--a3)">진행 중</span>' : '') + '</div>'; }).join('')
+        + '</div><div class="row" style="gap:8px"><button class="obtn" data-gedit="' + esc(sp.id) + '" style="flex:2;height:46px;border-color:var(--a3);color:var(--goldL)">계획 수정</button><button class="obtn" data-gdel="' + esc(sp.id) + '" style="flex:1;height:46px">계획 삭제</button></div><p class="note">단계마다 구글 캘린더 <b>' + esc((st.calMap[sp.calId] || {}).name || '') + '</b>에 여러 날 종일 일정으로 저장되어 있습니다.</p></section>';
     }
   }
   h += '</div>';
@@ -1312,6 +1322,7 @@ function openSettings() {
       + '<label style="display:flex;flex-direction:column;gap:6px"><span class="lab">Gemini API 키 (무료)</span><input class="inp" id="sAi" type="password" placeholder="복사한 키를 붙여 넣기" value="' + esc(S.aiKey || '') + '" autocomplete="off" autocapitalize="off" spellcheck="false"></label>'
       + '<div class="row"><button class="gbtn" data-a="aitest" style="flex:1;height:46px">' + (S.aiKey ? '키 저장하고 다시 확인' : '키 저장하고 확인') + '</button>' + (S.aiKey ? '<button class="obtn" data-a="aioff" style="height:46px">키 지우기</button>' : '') + '</div>'
       + '<p class="note">' + (S.aiKey ? 'AI 연결됨' + (S.aiModel ? ' · ' + esc(S.aiModel) : '') + '. ' : '키가 없으면 앱에 들어 있는 예비 코치가 대신 답해요. ') + '키는 이 기기에만 저장됩니다. 무료 등급은 보낸 내용이 구글 서비스 개선에 쓰일 수 있어서, 할 일은 제목·메모만, 분석은 카테고리별 시간 합계만 보냅니다. 키 받는 곳: aistudio.google.com/apikey</p>')
+    + sec('테마', '<div class="row" style="gap:8px">' + THEMES.map(z => '<button class="nchip' + (curTheme() === z[0] ? ' on' : '') + '" data-a="theme" data-v="' + z[0] + '" style="flex:1;justify-content:center">' + z[1] + '</button>').join('') + '</div><p class="note">이 기기에만 적용됩니다. 일정·카테고리 색은 구글 캘린더 색 그대로입니다.</p>')
     + sec('글자 크기', '<div class="row" style="gap:8px">' + [[0.92, '작게'], [1, '보통'], [1.1, '크게']].map(z => '<button class="nchip' + ((S.fz || 1) === z[0] ? ' on' : '') + '" data-a="fz" data-v="' + z[0] + '" style="flex:1;justify-content:center">' + z[1] + '</button>').join('') + '</div><p class="note">앱 전체 글자에 적용됩니다. 메모장 글씨는 메모 화면에서 따로 조절합니다.</p>')
     + '<p class="note">' + diagLine() + '</p>'
     + '<div class="box"><div class="boxrow" style="justify-content:space-between"><span style="font-size:calc(14px*var(--fz,1))">화면 아래 끝까지 채우기<br><span class="lab">아래가 잘려 보이면 끄세요</span></span><button class="switch' + (!S.noGap ? ' on' : '') + '" role="switch" aria-checked="' + !S.noGap + '" aria-label="화면 아래 끝까지 채우기" data-a="gapfix"><i></i></button></div></div>'
@@ -1332,13 +1343,14 @@ function openSettings() {
       catch (err) { S.aiKey = old; toast('연결 실패: ' + err.message); t.disabled = false; t.textContent = '키 저장하고 확인'; }
     }
     if (a === 'gapfix') { S.noGap = !S.noGap; save(); location.reload(); return; }
+    if (a === 'theme') { S.theme = t.dataset.v === 'navy' ? 'navy' : ''; save(); applyTheme(); redraw(); render(); return; }
     if (a === 'fz') { S.fz = +t.dataset.v; save(); document.documentElement.style.setProperty('--fzu', S.fz); redraw(); render(); }
     if (a === 'tags') { S.hideTags = !S.hideTags; save(); redraw(); render(); }
     if (a === 'plans') { S.showPlans = !S.showPlans; save(); redraw(); render(); }
     if (a === 'refresh') { try { const r = await api('calendars', { fresh: '1' }); setCals(r.calendars); M.months = {}; M.ts = {}; toast('새로 불러왔습니다'); redraw(); render(); } catch (err) { toast(err.message); } }
     if (a === 'copycode') { copyText(codeMake()).then(ok => toast(ok ? '연결 코드를 복사했어요. PC 앱 설정의 주소 칸에 붙여 넣으세요' : '복사하지 못했어요')); return; }
     if (a === 'install') { if (installEvt) { installEvt.prompt(); installEvt.userChoice.finally(() => { installEvt = null; redraw(); }); } return; }
-    if (a === 'unlink' && !t.dataset.armed) { t.dataset.armed = '1'; t.textContent = '한 번 더 누르면 해제·삭제'; t.style.borderColor = '#E8957A'; t.style.color = '#E8957A'; return; }
+    if (a === 'unlink' && !t.dataset.armed) { t.dataset.armed = '1'; t.textContent = '한 번 더 누르면 해제·삭제'; t.style.borderColor = 'var(--bad)'; t.style.color = 'var(--bad)'; return; }
     if (a === 'unlink') { // 연결 해제 = 이 기기에 남은 내 일정·할 일·계획 사본과 AI 키·AI 문장도 함께 지움 (회사 PC 등 남의 눈에 닿는 기기 대비, v3.27)
       wipeAccountCache(); S.url = ''; S.key = ''; S.aiKey = ''; S.aiModel = ''; S.listId = ''; S.sv = 0; save(); reset(); await boot(); redraw(); toast('연결을 끊고 이 기기에 저장된 내 데이터를 지웠습니다');
     }
@@ -1373,7 +1385,7 @@ $('#main').addEventListener('click', e => {
   if (q('[data-gnew]')) { openPlan(); return; }
   if ((t = q('[data-gedit]'))) { if (S.sv && S.sv < 3) { toast('데이터 창구 업데이트 후 쓸 수 있어요'); return; } const p = projects().find(x => x.id === t.dataset.gedit); if (p) openPlan(p); return; }
   if ((t = q('[data-gdel]'))) {
-    if (!t.dataset.armed) { t.dataset.armed = '1'; t.textContent = '한 번 더 누르면 삭제'; t.style.borderColor = '#E8957A'; t.style.color = '#E8957A'; return; }
+    if (!t.dataset.armed) { t.dataset.armed = '1'; t.textContent = '한 번 더 누르면 삭제'; t.style.borderColor = 'var(--bad)'; t.style.color = 'var(--bad)'; return; }
     const p = projects().find(x => x.id === t.dataset.gdel); if (!p) return; t.disabled = true;
     batch(p.phases.map(ph => ({ method: 'delete', url: GAPI + '/calendars/' + encodeURIComponent(ph.calId) + '/events/' + encodeURIComponent(ph.id) })))
       .then(() => { G.phases = (G.phases || []).filter(x => !(x.gantt && x.gantt.proj === p.id)); store.set('gantt', G.phases); G.sel = ''; Object.keys(M.ts).forEach(k => M.ts[k] = 0); toast('계획을 삭제했습니다'); drawGantt(); })

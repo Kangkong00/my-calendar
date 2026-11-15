@@ -44,17 +44,20 @@ async def run():
     report = {}
     async with async_playwright() as p:
         b = await p.chromium.launch(executable_path='/usr/bin/google-chrome', args=['--no-sandbox'])
-        for (W, H) in SIZES:
+        # 화면 크기 4종(다크 레더) + 화이트 네이비 테마 2종
+        for (W, H, TH) in [(w, h, '') for (w, h) in SIZES] + [(390, 844, 'navy'), (320, 693, 'navy')]:
             ctx = await b.new_context(viewport={'width': W, 'height': H}, device_scale_factor=2, has_touch=True)
             pg = await ctx.new_page(); errs = []
             pg.on('pageerror', lambda e: errs.append(str(e)))
             await pg.route('**/version.json*', lambda r: r.fulfill(status=404, body=''))
-            await pg.goto(URL); await pg.evaluate('localStorage.clear()'); await pg.reload(); await pg.wait_for_selector('#cover', state='detached', timeout=5000); await pg.wait_for_timeout(300)
+            await pg.goto(URL); await pg.evaluate('localStorage.clear()')
+            if TH: await pg.evaluate("t => localStorage.setItem('cal.settings', JSON.stringify({ theme: t }))", TH)
+            await pg.reload(); await pg.wait_for_selector('#cover', state='detached', timeout=5000); await pg.wait_for_timeout(300)
             async def shot(tag):
                 await pg.wait_for_timeout(450)
                 res = await pg.evaluate(CHECK)
-                await pg.screenshot(path=f'{OUT}/{W}x{H}_{tag}.png')
-                report[f'{W}x{H} {tag}'] = res
+                await pg.screenshot(path=f'{OUT}/{TH}{W}x{H}_{tag}.png')
+                report[f'{TH}{W}x{H} {tag}'] = res
             async def close_all(): await pg.evaluate('closeAll()'); await pg.wait_for_timeout(350)
             await shot('월간')
             await pg.click('.mday.today'); await shot('하루시간표'); await close_all()
@@ -89,7 +92,7 @@ async def run():
             await pg.click('[data-a=kind][data-v=week]'); await pg.wait_for_timeout(700); await shot('분석_주간')
             await pg.click('[data-a=prev]'); await pg.wait_for_timeout(700); await shot('분석_지난주'); await close_all()
             await pg.click('#vWeek'); await pg.wait_for_timeout(600); await shot('주간_헤더'); await pg.click('#vMonth'); await pg.wait_for_timeout(500)
-            report[f'{W}x{H} 스크립트 오류'] = errs
+            report[f'{TH}{W}x{H} 스크립트 오류'] = errs
             await ctx.close()
         # 2-1) 아이폰 홈 화면 앱 재현: iOS처럼 창 높이를 상태바만큼 짧게(797) 알려 주고 화면은 844, 안전영역 47/34
         for (W, H, short, top, bot) in [(390, 844, 47, 47, 34), (320, 693, 20, 20, 0), (430, 932, 59, 59, 34)]:
@@ -152,6 +155,16 @@ async def run():
         wp = await pg.evaluate("""() => { localStorage.setItem('cal.c.tasks', '{"x":1}'); localStorage.setItem('cal.c.months', '{}'); localStorage.setItem('cal.ai', '{}'); localStorage.setItem('cal.c.demo.tasks', '{"d":1}'); localStorage.setItem('cal.settings', localStorage.getItem('cal.settings') || '{}');
           wipeAccountCache(); return [localStorage.getItem('cal.c.tasks'), localStorage.getItem('cal.c.months'), localStorage.getItem('cal.ai'), !!localStorage.getItem('cal.c.demo.tasks'), !!localStorage.getItem('cal.settings')]; }""")
         if wp != [None, None, None, True, True]: errs.append(f'연결 해제 시 데이터 지우기 이상: {wp}')
+        # 테마 바꾸기: 설정에서 화이트 네이비 → 다시 열어도 유지 → 다크 레더로 복귀
+        await pg.evaluate("openSettings()"); await pg.wait_for_timeout(600)
+        await pg.click('[data-a=theme][data-v=navy]'); await pg.wait_for_timeout(400)
+        th1 = await pg.evaluate("() => [document.documentElement.dataset.theme || '', getComputedStyle(document.body).backgroundColor, document.querySelector('meta[name=theme-color]').content]")
+        await pg.reload(); await pg.wait_for_timeout(1500)
+        th2 = await pg.evaluate("() => document.documentElement.dataset.theme || ''")
+        await pg.evaluate("openSettings()"); await pg.wait_for_timeout(600); await pg.click('[data-a=theme][data-v=dark]'); await pg.wait_for_timeout(400)
+        th3 = await pg.evaluate("() => [document.documentElement.dataset.theme || '', getComputedStyle(document.body).backgroundColor]")
+        if th1 != ['navy', 'rgb(243, 245, 249)', '#0D1C37'] or th2 != 'navy' or th3 != ['', 'rgb(7, 5, 4)']: errs.append(f'테마 바꾸기 이상: {th1} {th2} {th3}')
+        await pg.evaluate('closeAll()')
         report['연결 코드'] = errs
         await ctx.close()
         # 캘린더↔할 일 연결 + 시작 화면 기능 검사 (390x844)
